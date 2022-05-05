@@ -1,13 +1,14 @@
 import pandas as pd
+import numpy as np
 from sklearn import preprocessing
 from sklearn.metrics import roc_curve, auc, cohen_kappa_score
 from sklearn.metrics import classification_report
-from sklearn.metrics import r2_score, mean_squared_log_error
+from sklearn.metrics import r2_score, mean_squared_error
 
 
 # Macros
 CLF_METRICS = ['precision', 'recall', 'f1-score', 'auc', 'kappa']
-REG_METRICS = ['r2', 'mse']
+REG_METRICS = ['r2', 'mse', 'std']
 METRICS = [*CLF_METRICS, *REG_METRICS]
 
 class PerformanceEvaluator():
@@ -36,7 +37,9 @@ class PerformanceEvaluator():
         if metric_name == 'r2':
             return r2_score(y_true, y_pred)
         if metric_name == 'mse':
-            return mean_squared_log_error(y_true, y_pred)
+            return mean_squared_error(y_true, y_pred)
+        if metric_name == 'std':
+            return np.std(y_true - y_pred)
 
         label = list(set([*y_true, *y_pred]))[0]
         metrics = classification_report(y_true, y_pred, output_dict=True)[str(label)]

@@ -46,15 +46,13 @@ class PsiCalculator():
             x (pandas.Dataframe) Monitoring dataset
 
         Returns:
-            pd.DataFrame: DataFrame containing the PSI for each variable
+            dict: Dictionary containing the PSI for each variable
         """
         psi_dict = {}
 
         for col in df.columns:
-            psi_dict[col] = self._get_psi(df, col)
-        
-        psi_df = pd.DataFrame.from_dict([psi_dict]).add_suffix('_psi')
-        return psi_df
+            psi_dict[f'psi_{col}'] = self._get_psi(df, col)
+        return psi_dict
 
     def _get_ref_deciles(self, x: pd.Series, var_name: str) -> dict:
         """Calculates the deciles of the reference variable

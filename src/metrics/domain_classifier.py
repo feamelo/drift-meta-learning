@@ -54,6 +54,7 @@ class DomainClassifier():
         self.reference = df.copy()
         return self
 
-    def evaluate(self, df: pd.DataFrame) -> float:
+    def evaluate(self, df: pd.DataFrame) -> dict:
         X, y = self._create_dataset(df.copy())
-        return self._get_accuracy(X, y)
+        accuracy = self._get_accuracy(X, y)
+        return {'dc_accuracy': accuracy}

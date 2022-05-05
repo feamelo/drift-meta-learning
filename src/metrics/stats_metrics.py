@@ -30,4 +30,5 @@ class StatsMetrics():
         stats = self._get_statistical_metrics(df)
         corr = self._get_correlation(df)
         metrics = pd.concat([stats, corr], ignore_index=True).set_index('variable').T
-        return metrics.reset_index(drop=True)
+        metrics = metrics.reset_index(drop=True)
+        return metrics.to_dict(orient='records')[0]
