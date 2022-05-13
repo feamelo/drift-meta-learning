@@ -1,5 +1,6 @@
 import pandas as pd
-from metrics import DomainClassifier, PsiCalculator, StatsMetrics
+from metrics import DomainClassifier, PsiCalculator
+from metrics import StatsMetrics, ClusteringMetrics
 from meta_learning import PerformanceEvaluator
 
 
@@ -9,7 +10,7 @@ BASE_MODEL_TYPES = ['classification', 'regression']
 META_MODEL_HYPERPARAMETERS = {'num_leaves': 21, 'max_depth': 6}
 META_LABEL_METRIC = 'precision'
 LAST_SCORES_DELAY = 3
-LAST_SCORES_N_SHIFTS = 3
+LAST_SCORES_N_SHIFTS = 10
 OFFLINE_TRAIN_SPLIT = 0.5
 R_STATE = 2022
 OMEGA = 300  # Window size with known label
@@ -58,11 +59,13 @@ class MetaLearner():
         idx = int(self.offline_train_split * offline_df.shape[0])
         df = offline_df.iloc[:idx]
         X = df.drop(self.base_model_class_column, axis=1)
+        X['predict_proba'] = self.base_model.predict_proba(X)[:, 0]
 
         self.fitted_metrics = [
             DomainClassifier().fit(X),
             PsiCalculator().fit(X),
             StatsMetrics().fit(X),
+            ClusteringMetrics().fit(X),
         ]
 
     def _get_last_performances(self, meta_base: pd.DataFrame) -> pd.DataFrame:
@@ -93,13 +96,14 @@ class MetaLearner():
 
             # X_known = known_data.drop(self.base_model_class_column, axis=1)
             X_arriving = arriving_data.drop(self.base_model_class_column, axis=1)
+            y_pred = self.base_model.predict(X_arriving)
+            X_arriving['predict_proba'] = self.base_model.predict_proba(X_arriving)[:, 0]
 
             # meta features    
             mf = self._get_metafeatures(X_arriving)
 
             # meta label
             y_arriving = arriving_data[self.base_model_class_column] # no online só chega em t+1
-            y_pred = self.base_model.predict(X_arriving)
 
             for metric in self.performance_metrics:
                 mf[metric] = performance.evaluate(y_arriving, y_pred, metric)

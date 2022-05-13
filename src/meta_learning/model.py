@@ -62,3 +62,6 @@ class Model():
 
     def predict(self, X: pd.DataFrame) -> pd.Series:
         return self.model.predict(X)
+
+    def predict_proba(self, X: pd.DataFrame) -> pd.Series:
+        return self.model.predict_proba(X)
