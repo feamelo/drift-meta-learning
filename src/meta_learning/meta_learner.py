@@ -1,24 +1,19 @@
 import pandas as pd
 from metrics import DomainClassifier, PsiCalculator
 from metrics import StatsMetrics, ClusteringMetrics
-from meta_learning import PerformanceEvaluator
+from meta_learning import evaluator
 
 
 # Macros
 BASE_MODEL_TYPE = 'classification'
 BASE_MODEL_TYPES = ['classification', 'regression']
-META_MODEL_HYPERPARAMETERS = {'num_leaves': 21, 'max_depth': 6}
 META_LABEL_METRIC = 'precision'
-LAST_SCORES_DELAY = 3
-LAST_SCORES_N_SHIFTS = 10
+KNOWN_TARGET_DELAY = 3
+KNOWN_TARGET_WINDOW_SIZE = 10
 OFFLINE_TRAIN_SPLIT = 0.5
 R_STATE = 2022
-OMEGA = 300  # Window size with known label
-ETA = 100  # Window size with unlabeled examples
-STEP = 10
-
-
-performance = PerformanceEvaluator()
+ETA = 100  # Window size used to extract meta features
+STEP = 10  # Step for next meta learning iteration
 
 
 class MetaLearner():
@@ -29,11 +24,10 @@ class MetaLearner():
         base_model_class_column:str,
         meta_label_metric: str=META_LABEL_METRIC,
         base_model_type: str=BASE_MODEL_TYPE,
-        omega: int=OMEGA,
         eta: int=ETA,
         step: int=STEP,
-        last_scores_delay: int=LAST_SCORES_DELAY,
-        last_scores_n_shifts: int=LAST_SCORES_N_SHIFTS,
+        known_target_delay: int=KNOWN_TARGET_DELAY,
+        known_target_window_size: int=KNOWN_TARGET_WINDOW_SIZE,
         offline_train_split: float=OFFLINE_TRAIN_SPLIT,
         ):
         self._get_performance_metrics(base_model_type, meta_label_metric)
@@ -47,13 +41,13 @@ class MetaLearner():
     def _get_performance_metrics(self, base_model_type: str, meta_label_metric: str) -> None:
         if base_model_type not in BASE_MODEL_TYPES:
             raise Exception(f"Invalid base_model_type '{base_model_type}', must be one of: {BASE_MODEL_TYPES}")
-        if meta_label_metric not in performance.clf_metrics:
-            raise Exception(f"Invalid meta_label_metric '{meta_label_metric}', must be one of: {performance.clf_metrics}")
+        if meta_label_metric not in evaluator.clf_metrics:
+            raise Exception(f"Invalid meta_label_metric '{meta_label_metric}', must be one of: {evaluator.clf_metrics}")
 
         if base_model_type == 'classification':
-            self.performance_metrics = performance.clf_metrics
+            self.performance_metrics = evaluator.clf_metrics
         else:
-            self.performance_metrics = performance.reg_metrics
+            self.performance_metrics = evaluator.reg_metrics
 
     def _fit_metrics(self, offline_df: pd.DataFrame) -> None:
         idx = int(self.offline_train_split * offline_df.shape[0])
@@ -73,7 +67,7 @@ class MetaLearner():
         meta_base = meta_base[df_cols]
 
         for metric in self.performance_metrics:
-            for n in range(self.last_scores_delay, self.last_scores_delay + self.last_scores_n_shifts):
+            for n in range(self.known_target_delay, self.known_target_delay + self.known_target_window_size):
                 meta_base.loc[:, [f'{metric}_t-{n}']] = meta_base[metric].shift(n)
         return meta_base
 
@@ -88,13 +82,10 @@ class MetaLearner():
         mf_df = df.iloc[idx:]
         meta_base = pd.DataFrame()
         offline_phase_size = mf_df.shape[0]
-        upper_bound = offline_phase_size -  self.eta# - self.omega
+        upper_bound = offline_phase_size -  self.eta
 
         for t in range(0, upper_bound, self.step):
-            # known_data = df.iloc[t:t+self.omega]
             arriving_data = mf_df.iloc[t:t + self.eta]
-
-            # X_known = known_data.drop(self.base_model_class_column, axis=1)
             X_arriving = arriving_data.drop(self.base_model_class_column, axis=1)
             y_pred = self.base_model.predict(X_arriving)
             X_arriving['predict_proba'] = self.base_model.predict_proba(X_arriving)[:, 0]
@@ -106,7 +97,7 @@ class MetaLearner():
             y_arriving = arriving_data[self.base_model_class_column] # no online só chega em t+1
 
             for metric in self.performance_metrics:
-                mf[metric] = performance.evaluate(y_arriving, y_pred, metric)
+                mf[metric] = evaluator.evaluate(y_arriving, y_pred, metric)
             meta_base = pd.concat([meta_base, mf], ignore_index=True)
         meta_base = self._get_last_performances(meta_base)
         return meta_base

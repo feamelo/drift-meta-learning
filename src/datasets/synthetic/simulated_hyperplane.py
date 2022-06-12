@@ -1,11 +1,7 @@
+# This code generates the simulated hyperplane dataset used in many stream learning papers.
+
 import numpy as np
 import pandas as pd
-
-# This code generates the simulated hyperplane dataset used in many stream learning papers.
-# In addition to outputting the dataset itself it also outputs the dimension weights over time.
-# I used these dimension weights as a measure of true feature importance in a paper
-# I discuss here:
-# http://www.ccri.com/2014/10/30/calculating-feature-importance-in-data-streams-with-concept-drift-using-online-random-forest/
 
 
 def drift(start, number_to_generate, magnitude_of_change, prob_direction_change):

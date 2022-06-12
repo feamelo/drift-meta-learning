@@ -52,3 +52,6 @@ class PerformanceEvaluator():
         if metric_name in CLF_METRICS:
             y_true, y_pred = self._get_encoded(y_true, y_pred)
         return self._get_performance(y_true, y_pred, metric_name)
+
+
+evaluator = PerformanceEvaluator()
