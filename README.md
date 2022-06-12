@@ -20,7 +20,7 @@ To Do:
 - [x] Different base model metrics (meta labels) experiments
 - [x] Target delay experiments
 - [x] Different base model experiments
-- [ ] Meta base dimensionality reduction experiments
+- [x] Meta base dimensionality reduction experiments
 - [ ] Measure elapsed time for each meta feature
 - [ ] Meta feature selection experiments
 - [ ] Baseline class

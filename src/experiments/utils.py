@@ -32,5 +32,6 @@ def offline_train(update_params, learner, validation_base):
     val_base = learner._get_last_performances(validation_base)
 
     X, y_true = val_base.drop(learner.performance_metrics, axis=1), val_base[metric]
+    X = learner._reduce_metabase(X)
     y_pred = model.predict(X)
     return y_true, y_pred
