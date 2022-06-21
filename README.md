@@ -8,8 +8,8 @@ To Do:
 
 
 - [x] Offline stage MetaLearner implementation
-- [ ] Online stage MetaLearner implementation
-- [ ] Meta model incremental learning
+- [x] Online stage MetaLearner implementation
+- [x] Meta model incremental learning
 - [x] Statistical meta features implementation
 - [x] Clustering meta features implementation
 - [x] PSI implementation
@@ -29,3 +29,6 @@ To Do:
 - [ ] Drift alert configuration
 - [ ] Code documentation
 - [ ] Readme
+- [ ] Experiments notebooks adjustments to fit new MetaLearner structure
+- [ ] Parameter for defining if metabase and base db should be stored
+- [ ] Prequential cross validation
