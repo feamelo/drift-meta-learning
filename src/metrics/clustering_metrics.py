@@ -6,7 +6,6 @@ import pandas as pd
 import numpy as np
 
 
-
 # Macros
 CLUSTERING_TYPE = 'kmeans'
 DBSCAN_PARAMS = {
