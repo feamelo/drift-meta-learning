@@ -1,19 +1,18 @@
 import pandas as pd
 from typing import Tuple
-from sklearn.decomposition import PCA
 
 # Custom imports
 from metrics import DomainClassifier, PsiCalculator
 from metrics import StatsMetrics, ClusteringMetrics
-from meta_learning import evaluator
+from meta_learning import evaluator, Metabase, BaseLevelBase
 
 
 # Macros
+PREDICTION_COL = 'predict'
+META_PREDICTION_COL = 'predicted'
 BASE_MODEL_TYPE = 'classification'
 BASE_MODEL_TYPES = ['classification', 'regression']
 META_LABEL_METRIC = 'precision'
-KNOWN_TARGET_DELAY = 300
-KNOWN_TARGET_WINDOW_SIZE = 0
 R_STATE = 2022
 VERBOSE = False
 ETA = 100  # Window size used to extract meta features
@@ -21,7 +20,6 @@ STEP = 10  # Step for next meta learning iteration
 PCA_N_COMPONENTS = None  # Number of components to keep in dim reduction
 # If < 1, select the num of components such that the amount of variance that
 # needs to be explained is greater than the percentage specified by n_components.
-DEFAULT_IMPUTE_VALUE = -9999
 
 
 class MetaLearner():
@@ -30,23 +28,31 @@ class MetaLearner():
         base_model,
         meta_model,
         base_model_class_column:str,
-        learning_window_size: int,
         meta_label_metric: str = META_LABEL_METRIC,
         base_model_type: str = BASE_MODEL_TYPE,
         eta: int = ETA,
         step: int = STEP,
-        known_target_delay: int = KNOWN_TARGET_DELAY,
-        known_target_window_size: int = KNOWN_TARGET_WINDOW_SIZE,
         pca_n_components: Tuple[int, float] = PCA_N_COMPONENTS,
         verbose: bool = VERBOSE, 
         ):
-        self._get_performance_metrics(base_model_type, meta_label_metric)
-        kwargs = locals()
-        kwargs = {key: kwargs[key] for key in list(kwargs.keys()) if key not in ('self', '__class__')}
-        self._update_params(**kwargs)
+        self.performance_metrics = self._get_performance_metrics(base_model_type, meta_label_metric)
+        self.__dict__.update(locals())
+        
+        self.prediction_col = PREDICTION_COL
 
-    def _update_params(self, **kwargs):
-        self.__dict__.update(kwargs)
+        self.metabase = Metabase(
+            pca_n_components = pca_n_components,
+            target_col = meta_label_metric,
+            prediction_col = META_PREDICTION_COL,
+            verbose = verbose,
+        )
+
+        self.baselevel_base = BaseLevelBase(
+            batch_size = eta,
+            target_col = base_model_class_column,
+            prediction_col = self.prediction_col,
+            verbose = verbose,
+        )
 
     def _get_performance_metrics(self, base_model_type: str, meta_label_metric: str) -> None:
         if base_model_type not in BASE_MODEL_TYPES:
@@ -54,15 +60,13 @@ class MetaLearner():
         if meta_label_metric not in evaluator.clf_metrics:
             raise Exception(f"Invalid meta_label_metric '{meta_label_metric}', must be one of: {evaluator.clf_metrics}")
         if base_model_type == 'classification':
-            self.performance_metrics = evaluator.clf_metrics
+            return evaluator.clf_metrics
         else:
-            self.performance_metrics = evaluator.reg_metrics
+            return evaluator.reg_metrics
 
-    def _fit_metrics(self, offline_df: pd.DataFrame) -> None:
-        df = offline_df.head(self.learning_window_size)
-        X = df.drop(self.base_model_class_column, axis=1)
+    def _fit_metrics(self, train_df: pd.DataFrame) -> None:
+        X = train_df.drop(self.base_model_class_column, axis=1)
         X['predict_proba'] = self.base_model.predict_proba(X)[:, 0]
-
         self.fitted_metrics = [
             DomainClassifier().fit(X),
             PsiCalculator().fit(X),
@@ -70,97 +74,107 @@ class MetaLearner():
             ClusteringMetrics().fit(X),
         ]
 
-    def _get_last_performances(self, meta_base: pd.DataFrame) -> pd.DataFrame:
-        """Uses last known target window to measure old base model performance
-        and use it as new meta features"""
-        df_cols = [col for col in meta_base.columns if '_t-' not in col]
-        meta_base = meta_base[df_cols]
-
-        for metric in self.performance_metrics:
-            for n in range(self.known_target_delay, self.known_target_delay + self.known_target_window_size):
-                meta_base.loc[:, [f'{metric}_t-{n}']] = meta_base[metric].shift(n)
-        return meta_base
-
-    def _get_metafeatures(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _get_meta_features(self, batch_features: pd.DataFrame) -> pd.DataFrame:
         mf_dict = {}
         for metric in self.fitted_metrics:
-            mf_dict = {**mf_dict, **metric.evaluate(df)}
+            mf_dict = {**mf_dict, **metric.evaluate(batch_features)}
         return pd.DataFrame.from_dict([mf_dict])
 
-    def _get_offline_metabase(self, offline_df: pd.DataFrame) -> pd.DataFrame:
-        mf_df = offline_df.tail(self.learning_window_size)
+    def _get_meta_labels(self, df_batch: pd.DataFrame) -> pd.DataFrame:
+        # Not available on online stage
+        y_true = df_batch[self.base_model_class_column]
+        y_pred = df_batch[self.prediction_col]
+        return evaluator.evaluate(y_true, y_pred, self.meta_label_metric)
+
+    def _fit_offline_baselevel_base(self, dataframe: pd.DataFrame) -> None:
+        # create prediction and predict_proba columns
+        features = dataframe.drop(self.base_model_class_column, axis=1)
+        dataframe["predict_proba"] = self.base_model.predict_proba(features)[:, 0]
+        dataframe[self.prediction_col] = self.base_model.predict(features)
+        self.baselevel_base.fit(dataframe)
+
+    def _fit_offline_metabase(self) -> pd.DataFrame:
         meta_base = pd.DataFrame()
-        offline_phase_size = mf_df.shape[0]
+        offline_base = self.baselevel_base.get_raw()
+        offline_phase_size = offline_base.shape[0]
         upper_bound = offline_phase_size -  self.eta
 
         for t in range(0, upper_bound, self.step):
-            arriving_data = mf_df.iloc[t:t + self.eta]
-            X_arriving = arriving_data.drop(self.base_model_class_column, axis=1)
-            y_pred = self.base_model.predict(X_arriving)
-            X_arriving['predict_proba'] = self.base_model.predict_proba(X_arriving)[:, 0]
+            df_batch = offline_base.iloc[t:t + self.eta]
+            batch_features = df_batch.drop([self.base_model_class_column, self.prediction_col], axis=1)
+            mf =  self._get_meta_features(batch_features)
+            mf[self.meta_label_metric] = self._get_meta_labels(df_batch)
 
-            # meta features    
-            mf = self._get_metafeatures(X_arriving)
-
-            # meta label - not available on online stage
-            y_arriving = arriving_data[self.base_model_class_column]
-
-            for metric in self.performance_metrics:
-                mf[metric] = evaluator.evaluate(y_arriving, y_pred, metric)
             meta_base = pd.concat([meta_base, mf], ignore_index=True)
-        meta_base = self._get_last_performances(meta_base)
-        return meta_base
+        self.metabase.fit(meta_base)
 
-    def _train_base_model(self, offline_df: pd.DataFrame) -> None:
-        df = offline_df.head(self.learning_window_size)
-
-        X = df.drop(self.base_model_class_column, axis=1)
-        y = df[self.base_model_class_column]
+    def _train_base_model(self, train_df: pd.DataFrame) -> None:
+        X = train_df.drop(self.base_model_class_column, axis=1)
+        y = train_df[self.base_model_class_column]
         self.base_model.fit(X, y)
 
-    def _reduce_metabase(self, X: pd.DataFrame, stage: str="online") -> pd.DataFrame:
-        if not self.pca_n_components:
-            return X
+    def _get_train_metabase(self) -> Tuple[pd.DataFrame, pd.Series]:
+        df = self.metabase.get_train_metabase()
+        X = df.drop(self.meta_label_metric, axis=1)
+        y = df[self.meta_label_metric]
+        return X, y
 
-        X = X.fillna(DEFAULT_IMPUTE_VALUE)
-        if stage == "offline":
-            svd_solver = "auto" if self.pca_n_components > 1 else "full"
-            self.pca = PCA(
-                n_components=self.pca_n_components,
-                svd_solver=svd_solver,
-                random_state=R_STATE
-                ).fit(X)
+    def _train_meta_model(self) -> None:
+        X, y = self._get_train_metabase()
 
         if self.verbose:
-            n_comp = self.pca.n_components_
-            variance = '{0:.2f}'.format(sum(self.pca.explained_variance_ratio_) * 100)
-            print(f'Dim reduction - keeping {n_comp} components explaining {variance}% of variance')
-        return pd.DataFrame(self.pca.transform(X))
+            print("Training meta model")
 
-    def _train_meta_model(self, stage: str="offline") -> None:
-        X = self.meta_base.drop(self.performance_metrics, axis=1)
-        y = self.meta_base[self.meta_label_metric]
+        # Incremental train of meta model
+        self.meta_model.partial_fit(X, y)
 
-        # Apply dimensionality reduction if set in init params
-        X = self._reduce_metabase(X, stage)
+    def _check_drift(self) -> None:
+        # TO DO
+        pass
 
-        # Train meta model, if stage=online do incremental learning
-        if stage == "offline":
-            self.meta_model.fit(X, y)
-        else:
-            self.meta_model.partial_fit(X, y)
+    def fit(self, base_train_df: pd.DataFrame, meta_train_df: pd.DataFrame) -> None:
+        """Creates the first meta base and fits the first meta model"""
+        self._train_base_model(base_train_df.copy())
+        self._fit_metrics(base_train_df.copy())
+        self._fit_offline_baselevel_base(meta_train_df.copy())
+        self._fit_offline_metabase()
+        self._train_meta_model()
 
-    def fit(self, df: pd.DataFrame) -> None:
-        """Creates the first meta base and fit the first meta model"""
-        self._train_base_model(df)
-        self._fit_metrics(df)
-        self.meta_base = self._get_offline_metabase(df)
-        self._train_meta_model(stage="offline")
+        # Update metabase with meta model prediction
+        X, _ = self._get_train_metabase()
+        y_pred = self.meta_model.predict(X)
+        self.metabase.update_predictions(y_pred)
+        return self
 
-    def update(self, df: pd.DataFrame) -> None:
+    def update(self, new_instance: pd.DataFrame) -> None:
         """Update meta learner with new online data"""
-        pass
+        # Update base level base
+        new_instance = pd.DataFrame(new_instance).T
+        dataframe = new_instance.copy()
+        dataframe["predict_proba"] = self.base_model.predict_proba(new_instance)[:, 0]
+        dataframe[self.prediction_col] = self.base_model.predict(new_instance)
+        self.baselevel_base.update(dataframe)
 
-    def target(self, y: Tuple[int, float, str]) -> None:
+        # If there is a new batch for calculating meta fetures
+        if self.baselevel_base.new_batch_counter == self.step:
+            batch = self.baselevel_base.get_batch()
+            batch_features = batch.drop(self.prediction_col, axis=1)
+            mf = self._get_meta_features(batch_features)
+            mf[self.metabase.prediction_col] = self.meta_model.predict(mf)
+            self.metabase.update(mf)
+            
+            # Check if the new batch is a drift indicative
+            self._check_drift()
+
+    def update_target(self, y: Tuple[int, float, str]) -> None:
         """Update meta learner with upcoming target"""
-        pass
+        self.baselevel_base.update_target(y)
+
+        # If there is a new batch for calculating meta labels
+        if self.baselevel_base.new_target_batch_counter == self.step:
+            batch = self.baselevel_base.get_target_batch()
+            meta_label = self._get_meta_labels(batch)
+            self.metabase.update_target(meta_label)
+
+            if self.metabase.new_batch_size == self.metabase.learning_window_size:
+                self._train_meta_model()  # Incremental learning

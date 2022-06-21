@@ -6,7 +6,6 @@ import sklearn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import TimeSeriesSplit
-from sklearn import preprocessing
 
 
 # Macros
@@ -54,9 +53,6 @@ class Model():
         if not self.hyperparameters:
             return {}
 
-        le = preprocessing.LabelEncoder()
-        y = le.fit_transform(y)
-
         scores_list = []
         for idx, hyper in enumerate(self.hyperparameters):
             model = self.basis_model(**{**{"random_state": R_STATE}, **hyper})
@@ -87,5 +83,8 @@ class Model():
 
     def partial_fit(self, X: pd.DataFrame, y: pd.Series):
         """Only available for lightGBM model"""
-        init_model = self.model.booster_
-        self.model = self.basis_model(**self.best_hyperparams).fit(X, y, init_model=init_model)
+        if not hasattr(self, 'model'):
+            self.fit(X, y)
+        else:
+            init_model = self.model.booster_
+            self.model = self.basis_model(**self.best_hyperparams).fit(X, y, init_model=init_model)

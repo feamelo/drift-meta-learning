@@ -11,6 +11,7 @@ CLF_METRICS = ['precision', 'recall', 'f1-score', 'auc', 'kappa']
 REG_METRICS = ['r2', 'mse', 'std']
 METRICS = [*CLF_METRICS, *REG_METRICS]
 
+
 class PerformanceEvaluator():
     def __init__(self):
         self.clf_metrics = CLF_METRICS
