@@ -122,9 +122,6 @@ class MetaLearner():
     def _train_meta_model(self) -> None:
         X, y = self._get_train_metabase()
 
-        if self.verbose:
-            print("Training meta model")
-
         # Incremental train of meta model
         self.meta_model.partial_fit(X, y)
 
@@ -176,5 +173,5 @@ class MetaLearner():
             meta_label = self._get_meta_labels(batch)
             self.metabase.update_target(meta_label)
 
-            if self.metabase.new_batch_size == self.metabase.learning_window_size:
+            if self.metabase.new_batch_size == self.step:
                 self._train_meta_model()  # Incremental learning

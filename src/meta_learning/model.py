@@ -46,7 +46,7 @@ class Model():
     def _time_series_cv(self, X: pd.DataFrame, y: pd.Series, model) -> float:
         cv = TimeSeriesSplit(n_splits=self.n_folds).split(X)
         return cross_val_score(model, X, y, cv=cv, scoring=self.scoring_metric)
-        
+
     def _cross_validation(self, X: pd.DataFrame, y: pd.Series) -> dict:
         if type(self.hyperparameters) == dict:
             return self.hyperparameters
@@ -56,7 +56,7 @@ class Model():
         scores_list = []
         for idx, hyper in enumerate(self.hyperparameters):
             model = self.basis_model(**{**{"random_state": R_STATE}, **hyper})
-            
+
             if self.cross_val_type == "kfold":
                 scores = self._kfold_cv(X, y, model)
             else:

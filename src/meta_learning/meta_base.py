@@ -71,6 +71,11 @@ class Metabase():
         # Remove instances with unknown target
         metabase = metabase.dropna(subset=[self.target_col])
         train_metabase = metabase.tail(self.learning_window_size)
+
+        if self.verbose:
+            lower, upper = train_metabase.index[0], train_metabase.index[-1]
+            print(f"Training model with instances {lower} to {upper}")
+
         try:
             return train_metabase.drop(self.prediction_col, axis=1)
         except:
