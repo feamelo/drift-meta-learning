@@ -14,13 +14,14 @@ To Do:
 - [x] Clustering meta features implementation
 - [x] PSI implementation
 - [x] Domain classifier implementation
-- [ ] Other drift metrics implementation
 - [x] Meta/base model hyperparameter tuning
 - [x] TimeSeries cross validation usage
 - [x] Different base model metrics (meta labels) experiments
 - [x] Target delay experiments
 - [x] Different base model experiments
 - [x] Meta base dimensionality reduction experiments
+- [ ] Other drift metrics implementation
+- [ ] Other databases experiments
 - [ ] Measure elapsed time for each meta feature
 - [ ] Meta feature selection experiments
 - [ ] Baseline class
@@ -31,4 +32,3 @@ To Do:
 - [ ] Readme
 - [ ] Experiments notebooks adjustments to fit new MetaLearner structure
 - [ ] Parameter for defining if metabase and base db should be stored
-- [ ] Prequential cross validation
