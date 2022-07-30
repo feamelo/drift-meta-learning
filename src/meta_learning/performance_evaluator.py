@@ -17,17 +17,16 @@ class PerformanceEvaluator():
         self.clf_metrics = CLF_METRICS
         self.reg_metrics = REG_METRICS
         self.metrics = METRICS
-        pass
 
     def _get_auc(self, y_true, y_pred):
         fpr, tpr, _ = roc_curve(y_true, y_pred)
         return auc(fpr, tpr)
 
     def _get_encoded(self, y_true, y_pred):
-        le = preprocessing.LabelEncoder()
-        le.fit(y_true)
-        y_true = le.transform(y_true)
-        y_pred = le.transform(y_pred)
+        label_encoder = preprocessing.LabelEncoder()
+        label_encoder.fit(y_true)
+        y_true = label_encoder.transform(y_true)
+        y_pred = label_encoder.transform(y_pred)
         return y_true, y_pred
 
     def _get_performance(self, y_true, y_pred, metric_name='precision'):

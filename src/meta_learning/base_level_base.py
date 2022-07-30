@@ -26,6 +26,7 @@ class BaseLevelBase():
         self.new_target_id = 0
         self.new_batch_counter = 0
         self.new_target_batch_counter = 0
+        self.base = pd.DataFrame()
 
     def get_batch(self) -> pd.DataFrame:
         self.new_batch_counter = 0
@@ -43,10 +44,10 @@ class BaseLevelBase():
     def get_raw(self) -> pd.DataFrame:
         return self.base.copy()
 
-    def fit(self, df: pd.DataFrame) -> None:
-        self.base = df.copy().reset_index(drop=True)
-        self.new_row_id = df.shape[0]
-        self.new_target_id = df.shape[0]
+    def fit(self, data_frame: pd.DataFrame) -> None:
+        self.base = data_frame.copy().reset_index(drop=True)
+        self.new_row_id = data_frame.shape[0]
+        self.new_target_id = data_frame.shape[0]
 
     def update(self, new_line: pd.DataFrame) -> None:
         """Update base with new online data"""
@@ -56,8 +57,8 @@ class BaseLevelBase():
         self.new_row_id += 1
         self.new_batch_counter += 1
 
-    def update_target(self, y: Tuple[int, float, str]) -> None:
+    def update_target(self, target: Tuple[int, float, str]) -> None:
         """Update base with upcoming target"""
-        self.base.at[self.new_target_id, self.target_col] = y
+        self.base.at[self.new_target_id, self.target_col] = target
         self.new_target_id += 1
         self.new_target_batch_counter += 1

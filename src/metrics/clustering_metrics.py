@@ -25,22 +25,22 @@ class ClusteringMetrics():
         self.clustering_type = clustering_type
         self.model_params = model_params
 
-    def _get_scaled(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _get_scaled(self, data_frame: pd.DataFrame) -> pd.DataFrame:
         # Filter numeric variables
-        df = df.select_dtypes(include=np.number)
+        data_frame = data_frame.select_dtypes(include=np.number)
         scaler = StandardScaler()
-        df[df.columns] = scaler.fit_transform(df[df.columns])
-        return df
+        data_frame[data_frame.columns] = scaler.fit_transform(data_frame[data_frame.columns])
+        return data_frame
 
-    def _get_dbscan_metrics (self, df: pd.DataFrame) -> dict:
-        n = df.shape[0]
-        db = DBSCAN(**self.model_params).fit(df)
-        core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
-        core_samples_mask[db.core_sample_indices_] = True
-        labels = db.labels_
+    def _get_dbscan_metrics (self, data_frame: pd.DataFrame) -> dict:
+        df_size = data_frame.shape[0]
+        dbscan = DBSCAN(**self.model_params).fit(data_frame)
+        core_samples_mask = np.zeros_like(dbscan.labels_, dtype=bool)
+        core_samples_mask[dbscan.core_sample_indices_] = True
+        labels = dbscan.labels_
 
         n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
-        noise_prop = list(labels).count(-1) / n
+        noise_prop = list(labels).count(-1) / df_size
         return {'dbscan_n_clusters': n_clusters, 'dbscan_noise_proportion': noise_prop}
 
     def _get_kmeans_compactness(self, kmeans: KMeans, df: pd.DataFrame) -> float:
@@ -55,22 +55,22 @@ class ClusteringMetrics():
             compactness += distance_sum
         return compactness
 
-    def _train_kmeans(self, df: pd.DataFrame) -> KMeans:
+    def _train_kmeans(self, data_frame: pd.DataFrame) -> KMeans:
         # A list holds the SSE values for each k
         sse = []
         models = []
         for k in range(1, 11):
             kmeans = KMeans(n_clusters=k, **self.model_params)
-            kmeans.fit(df)
+            kmeans.fit(data_frame)
             models.append(kmeans)
             sse.append(kmeans.inertia_)
 
-        kl = KneeLocator(range(1, 11), sse, curve="convex", direction="decreasing")
-        return models[kl.elbow - 1]
+        knee_locl = KneeLocator(range(1, 11), sse, curve="convex", direction="decreasing")
+        return models[knee_locl.elbow - 1]
 
-    def _get_kmeans_metrics(self, df: pd.DataFrame) -> dict:
-        kmeans = self._train_kmeans(df)
-        compacness = self._get_kmeans_compactness(kmeans, df)
+    def _get_kmeans_metrics(self, data_frame: pd.DataFrame) -> dict:
+        kmeans = self._train_kmeans(data_frame)
+        compacness = self._get_kmeans_compactness(kmeans, data_frame)
         return {
             'compacness': compacness,
             'kmeans_n_iter': kmeans.n_iter_,
@@ -78,6 +78,7 @@ class ClusteringMetrics():
             'kmeans_inertia': kmeans.inertia_,
         }
 
+    # pylint: disable=unused-argument
     def fit(self, *args):
         return self
 

@@ -23,7 +23,7 @@ class PsiCalculator():
             - fit: Calculates the deciles of each variable of training dataset
             - evaluate: Retrieves reference sample data and calculates the PSI
         """
-        pass
+        self.ref_data = {}
 
     def fit(self, df: pd.DataFrame):
         """Calculates the deciles for each attribute of the dataframe
@@ -31,15 +31,13 @@ class PsiCalculator():
         Args:
             df (pandas.Dataframe): Reference dataset
         """
-        self.ref_data = {}
-
         for col in df.columns:
             self.ref_data[col] = self._get_bins(df[col])
             deciles = self._get_ref_deciles(df[col], col)
             self.ref_data[col]['deciles'] = deciles
         return self
 
-    def evaluate(self, df: pd.DataFrame) -> pd.DataFrame:
+    def evaluate(self, monit_df: pd.DataFrame) -> pd.DataFrame:
         """Retrieves reference sample data and calculates the PSI
 
         Args:
@@ -50,15 +48,15 @@ class PsiCalculator():
         """
         psi_dict = {}
 
-        for col in df.columns:
-            psi_dict[f'psi_{col}'] = self._get_psi(df, col)
+        for col in monit_df.columns:
+            psi_dict[f'psi_{col}'] = self._get_psi(monit_df, col)
         return psi_dict
 
-    def _get_ref_deciles(self, x: pd.Series, var_name: str) -> dict:
+    def _get_ref_deciles(self, ref_feature: pd.Series, var_name: str) -> dict:
         """Calculates the deciles of the reference variable
 
         Args:
-            x (pandas.Series): Reference variable
+            ref_feature (pandas.Series): Reference variable
 
         Returns:
             dict: Dictionary containing the list of deciles for each attribute of the model,
@@ -67,20 +65,20 @@ class PsiCalculator():
         """
         data = self.ref_data[var_name]
 
-        if(self._is_categorical(x)):
-            deciles = self._get_categories(x)
+        if self._is_categorical(ref_feature):
+            deciles = self._get_categories(ref_feature)
         else:
-            deciles, _ = self._get_num_quantiles(x, data['bins'])
+            deciles, _ = self._get_num_quantiles(ref_feature, data["bins"])
             deciles = list(deciles)
         return deciles
 
-    def _get_bins(self, x: pd.Series) -> dict:
+    def _get_bins(self, ref_feature: pd.Series) -> dict:
         """Calculates the bins of the reference variable.
         - For numerical variables: deciles splits
         - For categorical variables: list of categories
 
         Args:
-            x (pandas.Series): Reference variable
+            ref_feature (pandas.Series): Reference variable
 
         Returns:
             Dictionary containing the type of the variable (categorical or numerical),
@@ -89,32 +87,32 @@ class PsiCalculator():
         """
         data = {}
 
-        if(self._is_categorical(x)):
-            data['var_type'] = 'cat'
-            data['bins'] = list(x.unique())
+        if self._is_categorical(ref_feature):
+            data["var_type"] = "cat"
+            data["bins"] = list(ref_feature.unique())
         else:
-            _, bins = self._get_num_quantiles(x)
-            data['var_type'] = 'num'
-            data['bins'] = list(bins)
+            _, bins = self._get_num_quantiles(ref_feature)
+            data["var_type"] = "num"
+            data["bins"] = list(bins)
         return data
 
-    def _get_psi(self, df: pd.DataFrame, var_name: str) -> float:
+    def _get_psi(self, monit_df: pd.DataFrame, var_name: str) -> float:
         """Retrieves reference data from .fit method and calculates
         the PSI for the specified variable
 
         Args:
-            df (pandas.Dataframe): Monitoring dataframe
+            monit_df (pandas.Dataframe): Monitoring dataframe
             var_name (string): Monitoring variable name
 
         Returns:
             float: Population Stability Index of the variable with the specified var_name
         """
-        x = df[var_name]
+        feature = monit_df[var_name]
         reference = self.ref_data[var_name]
 
-        if(reference['var_type'] == 'cat'):
-            return self._get_cat_psi(x, reference)
-        return self._get_num_psi(x, reference)
+        if reference["var_type"] == "cat":
+            return self._get_cat_psi(feature, reference)
+        return self._get_num_psi(feature, reference)
 
     def _sub_psi(self, monit, ref):
         """Calculate the PSI value of a single quantile.
@@ -133,118 +131,127 @@ class PsiCalculator():
             ref = 0.0001
         return (monit - ref) * np.log(monit/ref)
 
-    def _get_cat_psi(self, x: pd.Series, reference: dict) -> float:
+    def _get_cat_psi(self, monit_feature: pd.Series, reference: dict) -> float:
         """Calculate the PSI value of a categorical variable
 
         Args:
-            x (pd.Series): Monitoring variable
-            reference (dict): Reference data 
+            monit_feature (pd.Series): Monitoring variable
+            reference (dict): Reference data
 
         Returns:
             float: Population Stability Index of the variable
         """
-        monit = self._get_categories(x)
+        monit = self._get_categories(monit_feature)
         ref = reference['deciles']
         return sum(self._sub_psi(monit[k], ref[k]) for k in monit.keys())
 
-    def _get_num_psi(self, x: pd.Series, reference: dict) -> float:
+    def _get_num_psi(self, monit_feature: pd.Series, reference: dict) -> float:
         """Calculate the PSI value of a numerical variable
 
         Args:
-            x (pd.Series) Monitoring variable
+            monit_feature (pd.Series) Monitoring variable
         reference : objeto
             reference (dict): Reference data 
 
         Returns:
             float: Population Stability Index of the variable
         """
-        monit_deciles, _ = self._get_num_quantiles(x, reference['bins'])
+        monit_deciles, _ = self._get_num_quantiles(monit_feature, reference['bins'])
         ref_deciles = reference['deciles']
-        N = len(monit_deciles)
-        return sum(self._sub_psi(monit_deciles[i], ref_deciles[i]) for i in range(N))
+        n_deciles = len(monit_deciles)
+        return sum(self._sub_psi(monit_deciles[i], ref_deciles[i]) for i in range(n_deciles))
 
-    def _get_splits(self, x: pd.Series, n_quantiles: Tuple[int, list, np.array]=N_QUANTILES) -> list:
+    def _get_splits(
+        self,
+        feature: pd.Series,
+        n_quantiles: Tuple[int, list, np.array]=N_QUANTILES
+    ) -> list:
         """Calculates the upper and lower bounds of quantiles.
         If there are equal bounds, reduce the amount of quantiles for the variable.
 
         Args:
-            x (pd.Series): Variable to calculate splits
-            n_quantiles (int): If integer, determines the number of quantiles, otherwise it is the splits list
+            feature (pd.Series): Variable to calculate splits
+            n_quantiles (int): If integer, determines the number of quantiles,
+                otherwise it is the splits list
 
         Returns:
             list: Upper and lower bounds of quantiles
         """
-        if (type(n_quantiles) != int):
+        if not isinstance(n_quantiles, int):
             return n_quantiles
 
         step = int(100/n_quantiles)
-        bins = np.percentile(x, np.arange(step, 100 + n_quantiles, step))
+        bins = np.percentile(feature, np.arange(step, 100 + n_quantiles, step))
         qtd_unique = pd.Series(bins).nunique()
 
-        if(qtd_unique != len(bins)):
-            return self._get_splits(x, qtd_unique)
+        if qtd_unique != len(bins):
+            return self._get_splits(feature, qtd_unique)
         return bins
 
-    def _get_num_quantiles(self, x: pd.Series, n_quantiles: int=N_QUANTILES) -> Tuple[list, list]:
+    def _get_num_quantiles(
+        self,
+        feature: pd.Series,
+        n_quantiles: int=N_QUANTILES
+    ) -> Tuple[list, list]:
         """Calculates the quantiles for a numerical variable
 
         Args:
-            x (pd.Series): Variable to calculate the quantiles
+            feature (pd.Series): Variable to calculate the quantiles
             n_quantiles (int): Number of quantiles used for calculating PSI
 
         Returns:
-            scores (list): The percentage value of each quantile for the variable x
+            scores (list): The percentage value of each quantile for the variable feature
             bins (list): Upper and lower bounds of quantiles
         """
-        bins = self._get_splits(x, n_quantiles)
-        scores, bins = np.histogram(x, bins=bins)
-        scores = np.divide(scores, len(x))
+        bins = self._get_splits(feature, n_quantiles)
+        scores, bins = np.histogram(feature, bins=bins)
+        scores = np.divide(scores, len(feature))
         return scores, bins
 
-    def _get_categories(self, x):
+    def _get_categories(self, feature: pd.Series):
         """Calculates the percentage occurrence of each category
 
         Args:
-            x (pd.Series): Categorical variable
+            feature (pd.Series): Categorical variable
 
         Returns:
             dict: Dictionary containing the categories (possible values
-            of the variable x) as keys and the percentage occurrence of each
+            of the variable feature) as keys and the percentage occurrence of each
             category as value.
         """
-        df = pd.DataFrame()
-        df['categories'] = x.astype(str)
-        df = df.value_counts(normalize=True).to_frame().reset_index()
-        return df.set_index('categories').to_dict()[0]
+        data_frame = pd.DataFrame()
+        data_frame['categories'] = feature.astype(str)
+        data_frame = data_frame.value_counts(normalize=True).to_frame().reset_index()
+        return data_frame.set_index('categories').to_dict()[0]
 
-    def _is_binary(self, x: pd.Series) -> bool:
+    def _is_binary(self, feature: pd.Series) -> bool:
         """Checks whether a given variable is binary or not.
 
         Args:
-            x (pd.Series): variable
+            feature (pd.Series): variable
 
         Returns:
-            Boolean indicating whether the variable x is binary or not
+            Boolean indicating whether the variable feature is binary or not
         """
-        uniques = x.unique()
+        uniques = feature.unique()
         if len(uniques) == 2 and (0 in uniques) and (1 in uniques):
             return True
         return False
 
-    def _is_categorical(self, x: pd.Series) -> bool:
+    def _is_categorical(self, feature: pd.Series) -> bool:
         """Checks whether a given variable is categorical or numeric.
 
         Args:
-            x (pd.Series): variable
+            feature (pd.Series): variable
 
         Returns:
-            Boolean indicating whether the variable x is categorical (True)
+            Boolean indicating whether the variable feature is categorical (True)
             or numeric (False)
         """
-        if x.dtype == 'O':
+        if feature.dtype == 'O':
             return True
-        if x.dtype == 'bool':
+        if feature.dtype == 'bool':
             return True
-        if(x.dtype == 'float64') or (x.dtype == 'int64'):
-            return self._is_binary(x)
+        if(feature.dtype == 'float64') or (feature.dtype == 'int64'):
+            return self._is_binary(feature)
         return True

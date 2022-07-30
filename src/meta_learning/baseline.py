@@ -31,14 +31,14 @@ class Baseline():
     def _update_params(self, **kwargs):
         self.__dict__.update(kwargs)
 
-    def fit(self, df: pd.DataFrame) -> None:
+    def fit(self, features: pd.DataFrame) -> None:
         """Fit offline data"""
         pass
 
-    def update(self, df: pd.DataFrame) -> None:
+    def update(self, features: pd.DataFrame) -> None:
         """Update baseline with new online data"""
         pass
 
-    def target(self, y: Tuple[int, float, str]) -> None:
+    def target(self, target: Tuple[int, float, str]) -> None:
         """Update baseline with upcoming target"""
         pass

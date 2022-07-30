@@ -28,6 +28,8 @@ class Metabase():
         self.new_batch_size = 0
         self.new_row_id = 0
         self.new_target_id = 0
+        self.metabase = pd.DataFrame
+        self.learning_window_size = 0
 
     def _reduce_dim(self, dataframe: pd.DataFrame) -> pd.DataFrame:
         if not self.pca_n_components:
@@ -46,16 +48,15 @@ class Metabase():
             n_comp = self.pca.n_components_
             variance = '{0:.2f}'.format(
                 sum(self.pca.explained_variance_ratio_) * 100)
-            print(
-                f'Dim reduction - keeping {n_comp} components explaining {variance}% of variance')
+            print(f"Dim reduction - keeping {n_comp} components explaining {variance}% of variance")
         return pd.DataFrame(self.pca.transform(dataframe))
 
     def fit(self, first_metabase: pd.DataFrame) -> None:
         """Fit offline data"""
-        df = first_metabase.copy().reset_index(drop=True)
-        self.metabase = df
-        
-        df_size = df.shape[0]
+        data_frame = first_metabase.copy().reset_index(drop=True)
+        self.metabase = data_frame
+
+        df_size = data_frame.shape[0]
         self.new_row_id = df_size
         self.new_target_id = df_size
         self.learning_window_size = df_size
@@ -76,10 +77,9 @@ class Metabase():
             lower, upper = train_metabase.index[0], train_metabase.index[-1]
             print(f"Training model with instances {lower} to {upper}")
 
-        try:
+        if self.prediction_col in train_metabase.columns:
             return train_metabase.drop(self.prediction_col, axis=1)
-        except:
-            return train_metabase
+        return train_metabase
 
     def get_raw(self) -> pd.DataFrame:
         return self.metabase.copy()
@@ -91,10 +91,10 @@ class Metabase():
         self.metabase = pd.concat([self.metabase, new_line])
         self.new_row_id += 1
 
-    def update_target(self, y: float) -> None:
+    def update_target(self, target: float) -> None:
         """Update meta base with upcoming target"""
         self.new_batch_size += 1
-        self.metabase.at[self.new_target_id, self.target_col] = y
+        self.metabase.at[self.new_target_id, self.target_col] = target
         self.new_target_id += 1
 
     def update_predictions(self, y: float) -> None:
