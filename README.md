@@ -24,7 +24,7 @@ To Do:
 - [ ] Other databases experiments
 - [ ] Measure elapsed time for each meta feature
 - [ ] Meta feature selection experiments
-- [ ] Baseline class
+- [x] Baseline
 - [ ] Evaluation metrics for meta model vs baseline
 - [ ] Drift alert definition
 - [ ] Drift alert configuration
