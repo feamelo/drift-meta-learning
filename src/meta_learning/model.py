@@ -24,7 +24,7 @@ R_STATE = 2022
 class Model():
     def __init__(
         self,
-        hyperparameters: Tuple[list, dict],
+        hyperparameters: Tuple[list, dict] = None,
         basis_model = DEFAULT_MODEL,
         n_folds: int = DEFAULT_N_FOLDS,
         scoring_metric: str = DEFAULT_METRIC,
@@ -40,7 +40,7 @@ class Model():
             raise Exception(f"Invalid cross validation type, must be one of: {CROSS_VAL_TYPES}")
 
         self.basis_model = basis_model
-        self.hyperparameters = hyperparameters or []
+        self.hyperparameters = hyperparameters
         self.n_folds = n_folds
         self.scoring_metric = scoring_metric
         self.scoring_strategy = scoring_strategy

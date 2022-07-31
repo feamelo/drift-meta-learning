@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 from sklearn import preprocessing
 from sklearn.metrics import roc_curve, auc, cohen_kappa_score
 from sklearn.metrics import classification_report
@@ -64,11 +65,44 @@ class PerformanceEvaluator():
 
     def evaluate(self, y_true: pd.Series, y_pred: pd.Series, metric_name: str='precision') -> float:
         if metric_name not in METRICS:
-            raise ValueError(f"'metric_name' param must be one of {METRICS}")
+            raise ValueError(f"'metric_name' param must be one of {self.metrics}")
 
         if metric_name in self.clf_metrics:
             y_true, y_pred = self._get_encoded(y_true, y_pred)
         return self._get_performance(y_true, y_pred, metric_name)
 
+    def box_plot(
+        self,
+        results_df: pd.DataFrame,
+        y_true_col: str,
+        y_pred_col: str,
+        y_baseline_col: str
+    ):
+        props = dict(boxes="LightBlue", whiskers="DarkOrange", medians="DarkBlue", caps="Gray")
+        results_df["metalearning"] = results_df[y_true_col] - results_df[y_pred_col]
+        results_df["baseline"] = results_df[y_true_col] - results_df[y_baseline_col]
+        results_df = results_df[["metalearning", "baseline"]]
+        return results_df.plot.box(color=props, patch_artist=True, figsize=(15,10), fontsize=20)
+
+    def cumulative_gain(self, y_true: pd.Series, y_pred: pd.Series, y_baseline: pd.Series):
+        metalearning_error = np.square(y_true - y_pred)
+        baseline_error = np.square(y_true - y_baseline)
+        mtl_gain = baseline_error - metalearning_error
+        cumulative_gain = mtl_gain.cumsum()
+
+        # plot
+        _ = plt.figure(figsize=(25, 10))
+        cumulative_gain.plot.area(stacked=False)
+
+        print("Cumulative gain definition: squared_error(baseline) - squared_error(metalearning)")
+        plt.xlabel("Meta learning batch")
+        plt.ylabel("Cumulative gain")
+        plt.title("Cumulative gain")
+
+    def get_regression_metrics(self, y_true: pd.Series, y_pred: pd.Series) -> dict:
+        r2 = evaluator.evaluate(y_true, y_pred, 'r2')
+        mse = evaluator.evaluate(y_true, y_pred, 'mse')
+        std = evaluator.evaluate(y_true, y_pred, 'std')
+        return {'r2': r2, 'mse': mse, 'std': std}
 
 evaluator = PerformanceEvaluator()
