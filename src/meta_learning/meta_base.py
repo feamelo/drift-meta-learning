@@ -30,6 +30,7 @@ class Metabase():
         self.new_target_id = 0
         self.metabase = pd.DataFrame
         self.learning_window_size = 0
+        self.pca = None
 
     def _reduce_dim(self, dataframe: pd.DataFrame) -> pd.DataFrame:
         if not self.pca_n_components:
@@ -53,10 +54,8 @@ class Metabase():
 
     def fit(self, first_metabase: pd.DataFrame) -> None:
         """Fit offline data"""
-        data_frame = first_metabase.copy().reset_index(drop=True)
-        self.metabase = data_frame
-
-        df_size = data_frame.shape[0]
+        self.metabase = first_metabase.copy().reset_index(drop=True)
+        df_size = self.metabase.shape[0]
         self.new_row_id = df_size
         self.new_target_id = df_size
         self.learning_window_size = df_size
@@ -70,19 +69,22 @@ class Metabase():
         metabase = self._reduce_dim(metabase)
 
         # Remove instances with unknown target
-        metabase = metabase.dropna(subset=[self.target_col])
-        train_metabase = metabase.tail(self.learning_window_size)
+        lower_bound = self.new_target_id - self.learning_window_size
+        upper_bound = self.new_target_id
+        train_metabase = metabase.iloc[lower_bound:upper_bound]
 
         if self.verbose:
-            lower, upper = train_metabase.index[0], train_metabase.index[-1]
-            print(f"Training model with instances {lower} to {upper}")
-
+            print(f"Training model with instances {lower_bound} to {upper_bound}")
         if self.prediction_col in train_metabase.columns:
             return train_metabase.drop(self.prediction_col, axis=1)
         return train_metabase
 
     def get_raw(self) -> pd.DataFrame:
         return self.metabase.copy()
+
+    def get_last_performed_batch(self) -> pd.DataFrame:
+        metabase = self.get_raw()
+        return metabase.iloc[self.new_target_id - 1]
 
     def update(self, new_line: pd.DataFrame) -> None:
         """Update meta base with new online data"""
@@ -94,8 +96,9 @@ class Metabase():
     def update_target(self, target: float) -> None:
         """Update meta base with upcoming target"""
         self.new_batch_size += 1
-        self.metabase.at[self.new_target_id, self.target_col] = target
+        for col, value in target.items():
+            self.metabase.at[self.new_target_id, col] = value
         self.new_target_id += 1
 
-    def update_predictions(self, y: float) -> None:
-        self.metabase[self.prediction_col] = y
+    def update_predictions(self, target: float) -> None:
+        self.metabase[self.prediction_col] = target

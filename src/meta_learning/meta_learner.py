@@ -2,17 +2,18 @@ import pandas as pd
 from typing import Tuple
 
 # Custom imports
-from metrics import DomainClassifier, PsiCalculator
+from metrics import PsiCalculator
 from metrics import StatsMetrics, ClusteringMetrics
 from meta_learning import evaluator, Metabase, BaseLevelBase
 
 
 # Macros
-PREDICTION_COL = 'predict'
-META_PREDICTION_COL = 'predicted'
-BASE_MODEL_TYPE = 'classification'
-BASE_MODEL_TYPES = ['classification', 'regression']
-META_LABEL_METRIC = 'precision'
+PREDICTION_COL = "predict"
+META_PREDICTION_COL = "predicted"
+BASE_MODEL_TYPE = "classification"
+BASE_MODEL_TYPES = ["classification", "regression"]
+META_LABEL_METRIC = "precision"
+BASELINE_COL_SUFFIX = "last_"
 R_STATE = 2022
 VERBOSE = False
 ETA = 100  # Window size used to extract meta features
@@ -28,6 +29,7 @@ class MetaLearner():
         base_model,
         meta_model,
         base_model_class_column:str,
+        target_delay: int,
         meta_label_metric: str = META_LABEL_METRIC,
         base_model_type: str = BASE_MODEL_TYPE,
         eta: int = ETA,
@@ -39,6 +41,7 @@ class MetaLearner():
         self.fitted_metrics = []
         self.base_model = base_model
         self.meta_model = meta_model
+        self.target_delay = target_delay
         self.base_model_class_column = base_model_class_column
         self.meta_label_metric = meta_label_metric
         self.base_model_type = base_model_type
@@ -77,7 +80,6 @@ class MetaLearner():
         features = train_df.drop(self.base_model_class_column, axis=1)
         features['predict_proba'] = self.base_model.predict_proba(features)[:, 0]
         self.fitted_metrics = [
-            DomainClassifier().fit(features),
             PsiCalculator().fit(features),
             StatsMetrics().fit(features),
             ClusteringMetrics().fit(features),
@@ -89,11 +91,22 @@ class MetaLearner():
             mf_dict = {**mf_dict, **metric.evaluate(batch_features)}
         return pd.DataFrame.from_dict([mf_dict])
 
-    def _get_meta_labels(self, df_batch: pd.DataFrame) -> pd.DataFrame:
+    def _limit_metric_value(self, value: float, metric_name: str) -> float:
+        if value <= evaluator.metrics_range[metric_name][0]:
+            return evaluator.metrics_range[metric_name][0]
+        if value >= evaluator.metrics_range[metric_name][1]:
+            return evaluator.metrics_range[metric_name][1]
+        return value
+
+    def _get_meta_labels(self, df_batch: pd.DataFrame) -> dict:
         # Not available on online stage
         y_true = df_batch[self.base_model_class_column]
         y_pred = df_batch[self.prediction_col]
-        return evaluator.evaluate(y_true, y_pred, self.meta_label_metric)
+        metrics = {}
+        for metric_name in self.performance_metrics:
+            metric_value = evaluator.evaluate(y_true, y_pred, metric_name)
+            metrics[metric_name] = self._limit_metric_value(metric_value, metric_name)
+        return metrics
 
     def _fit_offline_baselevel_base(self, dataframe: pd.DataFrame) -> None:
         # create prediction and predict_proba columns
@@ -101,6 +114,12 @@ class MetaLearner():
         dataframe["predict_proba"] = self.base_model.predict_proba(features)[:, 0]
         dataframe[self.prediction_col] = self.base_model.predict(features)
         self.baselevel_base.fit(dataframe)
+
+    def _get_last_performances(self, meta_base: pd.DataFrame) -> pd.DataFrame:
+        for metric in self.performance_metrics:
+            col_name = f"{BASELINE_COL_SUFFIX}{metric}"
+            meta_base.loc[:, col_name] = meta_base[metric].shift(self.target_delay)
+        return meta_base
 
     def _fit_offline_metabase(self) -> pd.DataFrame:
         meta_base = pd.DataFrame()
@@ -113,9 +132,11 @@ class MetaLearner():
             batch_features = df_batch.drop([self.base_model_class_column,
                                             self.prediction_col], axis=1)
             meta_features =  self._get_meta_features(batch_features)
-            meta_features[self.meta_label_metric] = self._get_meta_labels(df_batch)
+            meta_labels = self._get_meta_labels(df_batch)
+            meta_features[list(meta_labels.keys())] = list(meta_labels.values())
 
             meta_base = pd.concat([meta_base, meta_features], ignore_index=True)
+        meta_base = self._get_last_performances(meta_base)
         self.metabase.fit(meta_base)
 
     def _train_base_model(self, train_df: pd.DataFrame) -> None:
@@ -125,7 +146,9 @@ class MetaLearner():
 
     def _get_train_metabase(self) -> Tuple[pd.DataFrame, pd.Series]:
         meta_base = self.metabase.get_train_metabase()
-        features = meta_base.drop(self.meta_label_metric, axis=1)
+        # baseline_cols = [col for col in meta_base.columns if BASELINE_COL_SUFFIX in col]
+        # cols_to_remove =  list(self.performance_metrics) + baseline_cols
+        features = meta_base.drop(self.performance_metrics, axis=1)
         target = meta_base[self.meta_label_metric]
         return features, target
 
@@ -136,6 +159,10 @@ class MetaLearner():
     def _check_drift(self) -> None:
         # TO DO
         pass
+
+    def _get_baseline(self) -> dict:
+        batch = self.metabase.get_last_performed_batch()[self.performance_metrics]
+        return {f"{BASELINE_COL_SUFFIX}{metric}": value for metric, value in batch.iteritems()}
 
     def fit(self, base_train_df: pd.DataFrame, meta_train_df: pd.DataFrame) -> None:
         """Creates the first meta base and fits the first meta model"""
@@ -162,9 +189,11 @@ class MetaLearner():
 
         # If there is a new batch for calculating meta fetures
         if self.baselevel_base.new_batch_counter == self.step:
+            baseline = self._get_baseline()
             batch = self.baselevel_base.get_batch()
             batch_features = batch.drop(self.prediction_col, axis=1)
             meta_features = self._get_meta_features(batch_features)
+            meta_features[list(baseline.keys())] = list(baseline.values())
             meta_features[self.metabase.prediction_col] = self.meta_model.predict(meta_features)
             self.metabase.update(meta_features)
 
@@ -178,8 +207,8 @@ class MetaLearner():
         # If there is a new batch for calculating meta labels
         if self.baselevel_base.new_target_batch_counter == self.step:
             batch = self.baselevel_base.get_target_batch()
-            meta_label = self._get_meta_labels(batch)
-            self.metabase.update_target(meta_label)
+            meta_labels = self._get_meta_labels(batch)
+            self.metabase.update_target(meta_labels)
 
             if self.metabase.new_batch_size == self.step:
                 self._train_meta_model()  # Incremental learning

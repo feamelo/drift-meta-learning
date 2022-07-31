@@ -34,12 +34,11 @@ class BaseLevelBase():
         return batch.tail(self.batch_size)
 
     def get_target_batch(self) -> pd.DataFrame:
-        """TO DO: Clear self.base old instances"""
         self.new_target_batch_counter = 0
 
         # Get a batch with last instances with known target
         batch = self.base.copy().dropna(subset=[self.target_col])
-        return batch.tail(self.batch_size) # the index[0] is the limit to be saved
+        return batch.tail(self.batch_size)
 
     def get_raw(self) -> pd.DataFrame:
         return self.base.copy()
