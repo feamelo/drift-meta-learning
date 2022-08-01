@@ -71,55 +71,5 @@ class PerformanceEvaluator():
             y_true, y_pred = self._get_encoded(y_true, y_pred)
         return self._get_performance(y_true, y_pred, metric_name)
 
-    def box_plot(
-        self,
-        results_df: pd.DataFrame,
-        y_true_col: str = None,
-        cols_to_plot: list = [],
-        title: str = "Box plot",
-        figsize = (15, 10),
-    ) -> None:
-        props = dict(boxes="LightBlue", whiskers="DarkOrange", medians="DarkBlue", caps="Gray")
-
-        if y_true_col:
-            for col in cols_to_plot:
-                results_df[col] = results_df[y_true_col] - results_df[col]
-            results_df = results_df[cols_to_plot]
-        results_df.plot.box(
-            color = props,
-            patch_artist = True,
-            fontsize = 20,
-            title = title,
-            figsize = figsize
-        )
-
-    def cumulative_gain(
-        self,
-        y_true: pd.Series,
-        y_pred: pd.Series,
-        y_baseline: pd.Series,
-        title: str = "Cumulative gain",
-        subplot: bool = False,
-    ) -> None:
-        metalearning_error = np.square(y_true - y_pred)
-        baseline_error = np.square(y_true - y_baseline)
-        mtl_gain = baseline_error - metalearning_error
-        cumulative_gain = mtl_gain.cumsum()
-
-        # plot
-        if not subplot:
-            _ = plt.figure(figsize=(25, 10))
-        cumulative_gain.plot.area(stacked=False)
-
-        print("Cumulative gain definition: squared_error(baseline) - squared_error(metalearning)")
-        plt.xlabel("Meta learning batch")
-        plt.ylabel("Cumulative gain")
-        plt.title(title)
-
-    def get_regression_metrics(self, y_true: pd.Series, y_pred: pd.Series) -> dict:
-        r2 = evaluator.evaluate(y_true, y_pred, 'r2')
-        mse = evaluator.evaluate(y_true, y_pred, 'mse')
-        std = evaluator.evaluate(y_true, y_pred, 'std')
-        return {'r2': r2, 'mse': mse, 'std': std}
 
 evaluator = PerformanceEvaluator()

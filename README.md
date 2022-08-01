@@ -25,10 +25,9 @@ To Do:
 - [ ] Measure elapsed time for each meta feature
 - [ ] Meta feature selection experiments
 - [x] Baseline
-- [ ] Evaluation metrics for meta model vs baseline
+- [x] Evaluation metrics for meta model vs baseline
 - [ ] Drift alert definition
 - [ ] Drift alert configuration
 - [ ] Code documentation
 - [ ] Readme
-- [ ] Experiments notebooks adjustments to fit new MetaLearner structure
-- [ ] Parameter for defining if metabase and base db should be stored
+- [x] Experiments notebooks adjustments to fit new MetaLearner structure

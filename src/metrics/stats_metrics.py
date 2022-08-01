@@ -5,8 +5,8 @@ from sklearn.decomposition import PCA
 
 
 # Macros
-METRICS = ['precision', 'recall', 'f1-score', 'auc', 'kappa']
 PCA_THRESH = 0.95
+
 
 class StatsMetrics():
     def __init__(self):
