@@ -143,7 +143,7 @@ class PsiCalculator():
         """
         monit = self._get_categories(monit_feature)
         ref = reference['deciles']
-        return sum(self._sub_psi(monit[k], ref[k]) for k in monit.keys())
+        return sum(self._sub_psi(monit[k], ref.get(k, 0)) for k in monit.keys())
 
     def _get_num_psi(self, monit_feature: pd.Series, reference: dict) -> float:
         """Calculate the PSI value of a numerical variable
