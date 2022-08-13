@@ -8,11 +8,14 @@ from sklearn.metrics import r2_score, mean_squared_error
 
 
 # Macros
-CLF_METRICS_RANGE = {
+BINARY_CLF_METRICS_RANGE = {
     "precision": (0, 1),
     "recall": (0, 1),
     "f1-score": (0, 1),
     "auc": (0, 1),
+    "kappa": (0, 1),
+}
+MULTICLASS_CLF_METRICS_RANGE = {
     "kappa": (0, 1),
 }
 REG_METRICS_RANGE = {
@@ -20,13 +23,14 @@ REG_METRICS_RANGE = {
     "mse": (0, np.inf),
     "std": (0, np.inf),
 }
-METRICS = [*CLF_METRICS_RANGE.keys(), *REG_METRICS_RANGE.keys()]
-METRICS_RANGE = {**CLF_METRICS_RANGE, **REG_METRICS_RANGE}
+METRICS = [*BINARY_CLF_METRICS_RANGE.keys(), *REG_METRICS_RANGE.keys()]
+METRICS_RANGE = {**BINARY_CLF_METRICS_RANGE, **REG_METRICS_RANGE}
 
 
 class PerformanceEvaluator():
     def __init__(self):
-        self.clf_metrics = CLF_METRICS_RANGE.keys()
+        self.binary_clf_metrics = BINARY_CLF_METRICS_RANGE.keys()
+        self.multiclass_clf_metrics = MULTICLASS_CLF_METRICS_RANGE.keys()
         self.reg_metrics = REG_METRICS_RANGE.keys()
         self.metrics_range = METRICS_RANGE
         self.metrics = METRICS
@@ -67,7 +71,7 @@ class PerformanceEvaluator():
         if metric_name not in METRICS:
             raise ValueError(f"'metric_name' param must be one of {self.metrics}")
 
-        if metric_name in self.clf_metrics:
+        if metric_name in self.binary_clf_metrics:
             y_true, y_pred = self._get_encoded(y_true, y_pred)
         return self._get_performance(y_true, y_pred, metric_name)
 

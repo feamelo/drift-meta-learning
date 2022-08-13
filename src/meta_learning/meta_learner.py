@@ -10,8 +10,8 @@ from meta_learning import evaluator, Metabase, BaseLevelBase
 # Macros
 PREDICTION_COL = "predict"
 META_PREDICTION_COL = "predicted"
-BASE_MODEL_TYPE = "classification"
-BASE_MODEL_TYPES = ["classification", "regression"]
+BASE_MODEL_TYPE = "binary_classification"
+BASE_MODEL_TYPES = ["binary_classification", "multiclass", "regression"]
 META_LABEL_METRIC = "precision"
 BASELINE_COL_SUFFIX = "last_"
 R_STATE = 2022
@@ -68,13 +68,18 @@ class MetaLearner():
         if base_model_type not in BASE_MODEL_TYPES:
             raise Exception(f"Invalid base_model_type '{base_model_type}', \
                 must be one of: {BASE_MODEL_TYPES}")
-        if meta_label_metric not in evaluator.clf_metrics:
-            raise Exception(f"Invalid meta_label_metric '{meta_label_metric}', \
-                must be one of: {evaluator.clf_metrics}")
-        if base_model_type == 'classification':
-            return evaluator.clf_metrics
-        else:
-            return evaluator.reg_metrics
+
+        metric_dict = {
+            "binary_classification": evaluator.binary_clf_metrics,
+            "multiclass": evaluator.multiclass_clf_metrics,
+            "regression": evaluator.reg_metrics,
+        }
+        metrics = metric_dict[base_model_type]
+
+        if meta_label_metric not in metrics:
+            raise Exception(f"Invalid meta_label_metric '{meta_label_metric}' \
+                for model type {base_model_type}, must be one of: {metrics}")
+        return metrics
 
     def _fit_metrics(self, train_df: pd.DataFrame) -> None:
         features = train_df.drop(self.base_model_class_column, axis=1)
@@ -146,8 +151,6 @@ class MetaLearner():
 
     def _get_train_metabase(self) -> Tuple[pd.DataFrame, pd.Series]:
         meta_base = self.metabase.get_train_metabase()
-        # baseline_cols = [col for col in meta_base.columns if BASELINE_COL_SUFFIX in col]
-        # cols_to_remove =  list(self.performance_metrics) + baseline_cols
         features = meta_base.drop(self.performance_metrics, axis=1)
         target = meta_base[self.meta_label_metric]
         return features, target

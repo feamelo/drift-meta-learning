@@ -74,6 +74,12 @@ class MetaEvaluator():
         plt.xlabel("Meta learning batch")
         plt.ylabel("Cumulative gain")
         plt.title(title, fontsize=20)
+        plt.legend(loc=2, prop={'size': 20})
+
+        if plot_perfect_eval:
+            mtl_final_gain = list(cumulative_gain)[-1]
+            ideal_final_gain = list(df_plot["optimal_regressor"])[-1]
+            return mtl_final_gain/ideal_final_gain
 
     def barchart_with_std(self, col_suffix: str="r2", title: str=""):
         baseline_data = self.results_df[f"{BASELINE}_{col_suffix}"]
