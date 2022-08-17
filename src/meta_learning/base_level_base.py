@@ -22,7 +22,6 @@ class BaseLevelBase():
         self.verbose = verbose
 
         # Other properties
-        self.new_row_id = 0
         self.new_target_id = 0
         self.new_batch_counter = 0
         self.new_target_batch_counter = 0
@@ -45,15 +44,12 @@ class BaseLevelBase():
 
     def fit(self, data_frame: pd.DataFrame) -> None:
         self.base = data_frame.copy().reset_index(drop=True)
-        self.new_row_id = data_frame.shape[0]
         self.new_target_id = data_frame.shape[0]
 
     def update(self, new_line: pd.DataFrame) -> None:
         """Update base with new online data"""
-        new_line["id"] = self.new_row_id
-        new_line = new_line.set_index("id")
-        self.base = pd.concat([self.base, new_line])
-        self.new_row_id += 1
+        df_size = len(self.base)
+        self.base.loc[df_size] = new_line
         self.new_batch_counter += 1
 
     def update_target(self, target: Tuple[int, float, str]) -> None:

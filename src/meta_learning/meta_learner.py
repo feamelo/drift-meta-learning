@@ -83,7 +83,9 @@ class MetaLearner():
 
     def _fit_metrics(self, train_df: pd.DataFrame) -> None:
         features = train_df.drop(self.base_model_class_column, axis=1)
-        features['predict_proba'] = self.base_model.predict_proba(features)[:, 0]
+        pred_proba = self.base_model.predict_proba(features)
+        for idx, pred in enumerate(pred_proba.T):
+            features[f"predict_proba_{idx}"] = pred
         self.fitted_metrics = [
             PsiCalculator().fit(features),
             StatsMetrics().fit(features),
@@ -116,7 +118,9 @@ class MetaLearner():
     def _fit_offline_baselevel_base(self, dataframe: pd.DataFrame) -> None:
         # create prediction and predict_proba columns
         features = dataframe.drop(self.base_model_class_column, axis=1)
-        dataframe["predict_proba"] = self.base_model.predict_proba(features)[:, 0]
+        pred_proba = self.base_model.predict_proba(features)
+        for idx, pred in enumerate(pred_proba.T):
+            dataframe[f"predict_proba_{idx}"] = pred
         dataframe[self.prediction_col] = self.base_model.predict(features)
         self.baselevel_base.fit(dataframe)
 
@@ -184,11 +188,14 @@ class MetaLearner():
     def update(self, new_instance: pd.DataFrame) -> None:
         """Update meta learner with new online data"""
         # Update base level base
-        new_instance = pd.DataFrame(new_instance).T
-        dataframe = new_instance.copy()
-        dataframe["predict_proba"] = self.base_model.predict_proba(new_instance)[:, 0]
-        dataframe[self.prediction_col] = self.base_model.predict(new_instance)
-        self.baselevel_base.update(dataframe)
+        new_instance_df = pd.DataFrame(new_instance).T
+
+        # Create multiple cols for predict proba output
+        pred_proba = self.base_model.predict_proba(new_instance_df)
+        for idx, pred in enumerate(pred_proba.T):
+            new_instance[f"predict_proba_{idx}"] = pred[0]
+        new_instance[self.prediction_col] = self.base_model.predict(new_instance_df)[0]
+        self.baselevel_base.update(new_instance)
 
         # If there is a new batch for calculating meta fetures
         if self.baselevel_base.new_batch_counter == self.step:

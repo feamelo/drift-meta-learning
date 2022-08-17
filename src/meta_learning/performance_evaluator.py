@@ -41,7 +41,7 @@ class PerformanceEvaluator():
 
     def _get_encoded(self, y_true, y_pred):
         label_encoder = preprocessing.LabelEncoder()
-        label_encoder.fit(y_true)
+        label_encoder.fit([*y_true, *y_pred])
         y_true = label_encoder.transform(y_true)
         y_pred = label_encoder.transform(y_pred)
         return y_true, y_pred
