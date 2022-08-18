@@ -5,25 +5,35 @@ from typing import Tuple
 
 # Macros
 N_QUANTILES = 10
+DEFAULT_DRIFT_THRESHOLD = 0.2
+DRIFT = 1
+NO_DRIFT = 0
+
 
 class PsiCalculator():
-    def __init__(self):
-        """Calculates the PSI (Population Stability Index) for univariate drift analysis
-        https://mwburke.github.io/data%20science/2018/04/29/population-stability-index.html
+    """Calculates the PSI (Population Stability Index) for univariate drift analysis
+    The PSI is a measure of how much that distribution is similar to the reference data
+    (data used in the model training)
 
-        The PSI is a measure of how much that distribution is similar to the reference data
-        (data used in the model training)
+    Interpretation:
+        * PSI < 0.1: No significant changes in distribution
+        * PSI < 0.2: Moderate changes
+        * PSI >= 0.2: Significant changes
 
-        Interpretation:
-            * PSI < 0.1: No significant changes in distribution
-            * PSI < 0.2: Moderate changes
-            * PSI >= 0.2: Significant changes
+    The class consists of two main methods:
+        - fit: Calculates the deciles of each variable of training dataset
+        - evaluate: Retrieves reference sample data and calculates the PSI
 
-        The class consists of two main methods:
-            - fit: Calculates the deciles of each variable of training dataset
-            - evaluate: Retrieves reference sample data and calculates the PSI
-        """
+    Args:
+        input_cols (list): List of columns to calculate PSI. If not provided, all columns
+            of reference dataframe will be used during .fit() call
+        drift_threshold (float): Minimum PSI value to be considered as drift, if any variable
+            has a psi greater than this threshold, the drift flag will be True.
+    """
+    def __init__(self, input_cols: list=None, drift_threshold: float=DEFAULT_DRIFT_THRESHOLD):
         self.ref_data = {}
+        self.input_cols = input_cols
+        self.drift_threshold = drift_threshold
 
     def fit(self, df: pd.DataFrame):
         """Calculates the deciles for each attribute of the dataframe
@@ -31,7 +41,9 @@ class PsiCalculator():
         Args:
             df (pandas.Dataframe): Reference dataset
         """
-        for col in df.columns:
+        if not self.input_cols:
+            self.input_cols = df.columns
+        for col in self.input_cols:
             self.ref_data[col] = self._get_bins(df[col])
             deciles = self._get_ref_deciles(df[col], col)
             self.ref_data[col]['deciles'] = deciles
@@ -50,7 +62,22 @@ class PsiCalculator():
 
         for col in monit_df.columns:
             psi_dict[f'psi_{col}'] = self._get_psi(monit_df, col)
-        return psi_dict
+        drift_flag = self._check_drift(psi_dict)
+        return {**psi_dict, "psi_drift_flag": drift_flag}
+
+    def _check_drift(self, psi_dict: dict) -> int:
+        """Check if any variable has psi value higher than threshold
+
+        Args:
+            psi_dict (dict): Dictionary containing the psi (values)
+                for each variable (keys)
+
+        Returns:
+            int: Flag indicating wether the drift has occured or not
+        """
+        if any(psi > self.drift_threshold for psi in psi_dict.values()):
+            return DRIFT
+        return NO_DRIFT
 
     def _get_ref_deciles(self, ref_feature: pd.Series, var_name: str) -> dict:
         """Calculates the deciles of the reference variable
