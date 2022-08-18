@@ -10,14 +10,14 @@ PCA_THRESH = 0.95
 
 
 class StatsMetrics():
-    def __init__(self):
-        pass
+    def __init__(self, pca_threshold: float=PCA_THRESH):
+        self.pca_threshold = pca_threshold
 
     def _get_prop_pca(self, data_frame: pd.DataFrame) -> dict:
-        n = data_frame.shape[0]
-        pca = PCA(n_components=PCA_THRESH)
+        df_size = data_frame.shape[0]
+        pca = PCA(n_components=self.pca_threshold)
         principal_components = pca.fit_transform(data_frame.select_dtypes(include=np.number))
-        return {'prop_pca': principal_components.shape[1] / n}
+        return {'prop_pca': principal_components.shape[1] / df_size}
 
     def _get_sparsity(self, data_frame: pd.DataFrame) -> dict:
         df_size = data_frame.shape[0]
