@@ -2,7 +2,6 @@ import pandas as pd
 
 
 # Macros
-SEED = 2020
 DEFAULT_DRIFT_THRESHOLD = 0.3
 DRIFT = 1
 NO_DRIFT = 0
