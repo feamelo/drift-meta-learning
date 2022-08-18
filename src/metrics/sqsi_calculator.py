@@ -21,10 +21,8 @@ class SqsiCalculator():
 
     Args:
         score_cols (str): Name of dataframe columns containing the base model score
-        drift_threshold (float, optional): Minimum TODO percentage of change in cluster distance
-            to be considered as drift, if any cluster has a distance difference greater than
-            this threshold, the drift flag will be True. Defaults to 0.001 as reccomended by
-                the paper authors.
+        drift_threshold (float, optional): pvalue threshold of KS test to reject the
+            null hypothesis, if the pvalue is smaller than this, drift is detected.
     """
     def __init__(
         self,
@@ -96,7 +94,7 @@ class SqsiCalculator():
             dict: Dictionary containing KS statistic and pvalue for each scoring col
         """
         scores_ks = {}
-        for col in self.ref_scores.columns:
+        for col in self.score_cols:
             statistic, pvalue = self._get_ks(self.ref_scores[col], monit_scores[col])
             scores_ks[f"{col}_ks_statistic"] = statistic
             scores_ks[f"{col}_ks_pvalue"] = pvalue
