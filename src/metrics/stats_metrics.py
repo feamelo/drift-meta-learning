@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
-from scipy.stats import hmean, gmean, entropy
+from scipy.stats import hmean, gmean
 from sklearn.decomposition import PCA
+from math import e
 
 
 # Macros
@@ -43,12 +44,18 @@ class StatsMetrics():
         kurt = data_frame.kurt(axis=0).to_dict()
         return {**skew, **kurt}
 
+    def _get_entropy(self, col_name: str, base: float = e):
+        val_counts = pd.Series(col_name).value_counts(
+            normalize=True, sort=False)
+        base = e if base is None else base
+        return -(val_counts * np.log(val_counts)/np.log(base)).sum()
+
     def _get_gmean_hmean_entropy(self, data_frame: pd.DataFrame) -> dict:
         metrics = {}
         for col in data_frame.columns:
             metrics[f'{col}_gmean'] = gmean(data_frame[col])
             metrics[f'{col}_hmean'] = hmean(data_frame[col])
-            metrics[f'{col}_entropy'] = entropy(data_frame[col])
+            metrics[f'{col}_entropy'] = self._get_entropy(data_frame[col])
             metrics[f'{col}_median'] = data_frame[col].median()
         return metrics
 
