@@ -1,5 +1,6 @@
 import pandas as pd
 from scipy.io import arff
+from sklearn import preprocessing
 
 
 def _get_cat_cols(data_frame: pd.DataFrame) -> list:
@@ -14,20 +15,19 @@ def _decode_df_cols(data_frame: pd.DataFrame) -> pd.DataFrame:
     return data_frame
 
 
+def _encode_df_cols(data_frame: pd.DataFrame) -> pd.DataFrame:
+    cols = _get_cat_cols(data_frame)
+    for col in cols:
+        lab_enc = preprocessing.LabelEncoder()
+        data_frame[col] = lab_enc.fit_transform(data_frame[col])
+    return data_frame
+
 def _load_generic(name: str) -> pd.DataFrame:
     file = open(f"../datasets/real/{name}.arff", "r", encoding="utf-8")
     data, _ = arff.loadarff(file)
     data_frame = pd.DataFrame(data)
-    return _decode_df_cols(data_frame)
-
-
-def _load_covertype() -> pd.DataFrame:
-    return _load_generic("covtype")
-
-
-def _load_powersupply() -> pd.DataFrame:
-    return _load_generic("powersupply")
-
+    data_frame = _decode_df_cols(data_frame)
+    return _encode_df_cols(data_frame)
 
 def _load_electricity() -> pd.DataFrame:
     file = open("../datasets/real/elec.arff", "r", encoding="utf-8")
@@ -37,14 +37,14 @@ def _load_electricity() -> pd.DataFrame:
     data_frame['class'] = data_frame['class'].str.decode("utf-8")
     return data_frame.drop(['date', 'period', 'day'], axis=1)
 
-
 def load_dataset(dataset_name: str) -> pd.DataFrame:
     dataset_dict = {
         "electricity": _load_electricity,
-        "covertype": _load_covertype,
-        "powersupply": _load_powersupply,
+        "covertype": lambda: _load_generic("covtype"),
+        "powersupply": lambda: _load_generic("powersupply"),
+        "poker": lambda: _load_generic("poker-lsn"),
     }
     possible_datasets = list(dataset_dict.keys())
     if dataset_name not in possible_datasets:
-        raise ValueError(f"Invalid dataset name, must be one of {possible_datasets}")
+        return _load_generic(dataset_name)
     return dataset_dict[dataset_name]()
