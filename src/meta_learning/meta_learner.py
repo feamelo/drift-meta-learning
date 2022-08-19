@@ -21,6 +21,8 @@ STEP = 10  # Step for next meta learning iteration
 PCA_N_COMPONENTS = None  # Number of components to keep in dim reduction
 # If < 1, select the num of components such that the amount of variance that
 # needs to be explained is greater than the percentage specified by n_components.
+INCLUDE_DRIFT_METRICS_MFS = True  # Indicates if drift detection techniques should
+# be used as meta features
 
 
 class MetaLearner():
@@ -36,6 +38,7 @@ class MetaLearner():
         step: int = STEP,
         pca_n_components: Tuple[int, float] = PCA_N_COMPONENTS,
         verbose: bool = VERBOSE,
+        include_drift_metrics_mfs: bool = INCLUDE_DRIFT_METRICS_MFS,
         ):
         self.prediction_col = PREDICTION_COL
         self.fitted_metrics = []
@@ -49,6 +52,7 @@ class MetaLearner():
         self.step = step
         self.pca_n_components = pca_n_components
         self.verbose = verbose
+        self.include_drift_metrics_mfs = include_drift_metrics_mfs
 
         self.performance_metrics = self._get_performance_metrics(base_model_type, meta_label_metric)
         self.metabase = Metabase(
@@ -90,14 +94,18 @@ class MetaLearner():
             features[f"predict_proba_{idx}"] = pred
             score_cols.append(f"predict_proba_{idx}")
         self.fitted_metrics = [
-            PsiCalculator().fit(features),
             StatsMetrics().fit(features),
-            DomainClassifier().fit(features),
             ClusteringMetrics().fit(features),
-            OmvPht(score_cols=score_cols).fit(features),
-            SqsiCalculator(score_cols=score_cols).fit(features),
-            Udetector(prediction_col=self.prediction_col).fit(features),
         ]
+        if self.include_drift_metrics_mfs:
+            self.fitted_metrics += [
+                PsiCalculator().fit(features),
+                DomainClassifier().fit(features),
+                OmvPht(score_cols=score_cols).fit(features),
+                SqsiCalculator(score_cols=score_cols).fit(features),
+                Udetector(prediction_col=self.prediction_col).fit(features),
+            ]
+            
 
     def _get_meta_features(self, batch_features: pd.DataFrame) -> pd.DataFrame:
         mf_dict = {}
