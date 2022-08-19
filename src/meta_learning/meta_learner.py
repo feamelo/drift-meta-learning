@@ -2,8 +2,8 @@ import pandas as pd
 from typing import Tuple
 
 # Custom imports
-from metrics import PsiCalculator
-from metrics import StatsMetrics, ClusteringMetrics
+from metrics import PsiCalculator, Udetector, DomainClassifier, OmvPht
+from metrics import StatsMetrics, ClusteringMetrics, SqsiCalculator
 from meta_learning import evaluator, Metabase, BaseLevelBase
 
 
@@ -82,14 +82,21 @@ class MetaLearner():
         return metrics
 
     def _fit_metrics(self, train_df: pd.DataFrame) -> None:
-        features = train_df.drop(self.base_model_class_column, axis=1)
-        pred_proba = self.base_model.predict_proba(features)
+        features = train_df.rename(columns={
+            self.base_model_class_column: self.prediction_col})
+        pred_proba = self.base_model.predict_proba(features.drop(self.prediction_col, axis=1))
+        score_cols = []
         for idx, pred in enumerate(pred_proba.T):
             features[f"predict_proba_{idx}"] = pred
+            score_cols.append(f"predict_proba_{idx}")
         self.fitted_metrics = [
             PsiCalculator().fit(features),
             StatsMetrics().fit(features),
+            DomainClassifier().fit(features),
             ClusteringMetrics().fit(features),
+            OmvPht(score_cols=score_cols).fit(features),
+            SqsiCalculator(score_cols=score_cols).fit(features),
+            Udetector(prediction_col=self.prediction_col).fit(features),
         ]
 
     def _get_meta_features(self, batch_features: pd.DataFrame) -> pd.DataFrame:
@@ -138,8 +145,7 @@ class MetaLearner():
 
         for time in range(0, upper_bound, self.step):
             df_batch = offline_base.iloc[time:time + self.eta]
-            batch_features = df_batch.drop([self.base_model_class_column,
-                                            self.prediction_col], axis=1)
+            batch_features = df_batch.drop([self.base_model_class_column], axis=1)
             meta_features =  self._get_meta_features(batch_features)
             meta_labels = self._get_meta_labels(df_batch)
             meta_features[list(meta_labels.keys())] = list(meta_labels.values())
@@ -164,7 +170,7 @@ class MetaLearner():
         self.meta_model.fit(features, target)
 
     def _check_drift(self) -> None:
-        # TO DO
+        # TODO
         pass
 
     def _get_baseline(self) -> dict:
@@ -201,8 +207,7 @@ class MetaLearner():
         if self.baselevel_base.new_batch_counter == self.step:
             baseline = self._get_baseline()
             batch = self.baselevel_base.get_batch()
-            batch_features = batch.drop(self.prediction_col, axis=1)
-            meta_features = self._get_meta_features(batch_features)
+            meta_features = self._get_meta_features(batch)
             meta_features[list(baseline.keys())] = list(baseline.values())
             meta_features[self.metabase.prediction_col] = self.meta_model.predict(meta_features)
             self.metabase.update(meta_features)
@@ -221,4 +226,4 @@ class MetaLearner():
             self.metabase.update_target(meta_labels)
 
             if self.metabase.new_batch_size == self.step:
-                self._train_meta_model()  # Incremental learning
+                self._train_meta_model()

@@ -59,6 +59,8 @@ class OmvPht():
         mu2, std2 = score_2.mean(), score_2.std()
         norm1 = NormalDist(mu=mu1, sigma=std1)
         norm2 = NormalDist(mu=mu2, sigma=std2)
+        if std1 == 0 or std2 == 0:
+            return 0
         return norm1.overlap(norm2)
 
     def _get_scores_overlaps(self, monit_scores: pd.DataFrame) -> dict:

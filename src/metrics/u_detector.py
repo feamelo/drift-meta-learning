@@ -22,6 +22,7 @@ class Udetector():
         self.prediction_col = prediction_col
         self.drift_threshold = drift_threshold
         self.thresholds = {}
+        self.clusters = []
 
     def _get_cluster_distance(self, data_frame: pd.DataFrame) -> float:
         """Calculate the distance to cluster centroid over all variables
@@ -34,6 +35,8 @@ class Udetector():
             float: Average distance to centroid
         """
         df_count = len(data_frame)
+        if not df_count:
+            return 0
         dist = 0
         for feature in data_frame.columns:
             centroid = data_frame[feature].mean()
@@ -49,9 +52,8 @@ class Udetector():
         Returns:
             dict: Dictionary containing the distances (values) and classes (keys)
         """
-        clusters = data_frame[self.prediction_col].unique()
         dist = {}
-        for cluster in clusters:
+        for cluster in self.clusters:
             # Filter data with specific label
             cluster_df = data_frame[data_frame[self.prediction_col] == cluster]
             cluster_df.drop(self.prediction_col, axis=1, inplace=True)
@@ -97,6 +99,7 @@ class Udetector():
         Args:
             data_frame (pd.DataFrame): Reference dataframe
         """
+        self.clusters = data_frame[self.prediction_col].unique()
         distances = self._get_total_distance(data_frame)
         self.thresholds = self._get_thresholds(distances)
         return self
