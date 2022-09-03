@@ -233,12 +233,21 @@ class MetaLearner():
         self.baselevel_base.fit(dataframe)
 
     def _get_last_performances(self, meta_base: pd.DataFrame) -> pd.DataFrame:
+        """The baseline is the last calculated performance (for the last
+        batch with known target). Get the last performances of a batch
+        for offline stage usage.
+        """
         for metric in self.performance_metrics:
             col_name = f"{BASELINE_COL_SUFFIX}{metric}"
             meta_base.loc[:, col_name] = meta_base[metric].shift(self.target_delay)
         return meta_base
 
-    def _fit_offline_metabase(self) -> pd.DataFrame:
+    def _fit_offline_metabase(self) -> None:
+        """Splits the offline database in groups of fixed size (self.eta)
+        and iterate over them by steps of fixed size (self.step).
+        Calculate the meta features and meta labels for each group and
+        concat them to create the first metabase.
+        """
         meta_base = pd.DataFrame()
         offline_base = self.baselevel_base.get_raw()
         offline_phase_size = offline_base.shape[0]
@@ -276,7 +285,8 @@ class MetaLearner():
 
     def _get_baseline(self) -> dict:
         """The baseline is the last calculated performance (for the last
-        batch with known target).
+        batch with known target). Get the last performances of a single
+        instance for online stage usage.
 
         Returns:
             dict: dictionary containing the last performance for each of the

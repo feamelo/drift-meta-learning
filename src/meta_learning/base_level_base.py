@@ -8,6 +8,18 @@ VERBOSE = False
 
 
 class BaseLevelBase():
+    """Class to manage the base level dataset.
+
+    Args:
+        batch_size (int):
+            Meta learning window size
+        target_col (str):
+            Column name of target data
+        prediction_col (str):
+            Prediction column name
+        verbose (bool, optional):
+            Verbosity. Defaults to False.
+    """
     def __init__(
         self,
         batch_size: int,
@@ -28,11 +40,13 @@ class BaseLevelBase():
         self.base = pd.DataFrame()
 
     def get_batch(self) -> pd.DataFrame:
+        """Get the last batch data"""
         self.new_batch_counter = 0
         batch = self.base.copy().drop(self.target_col, axis=1)
         return batch.tail(self.batch_size)
 
     def get_target_batch(self) -> pd.DataFrame:
+        """Get batch of data with known target"""
         self.new_target_batch_counter = 0
 
         # Get a batch with last instances with known target
@@ -40,9 +54,11 @@ class BaseLevelBase():
         return batch.tail(self.batch_size)
 
     def get_raw(self) -> pd.DataFrame:
+        """Get the entire database"""
         return self.base.copy()
 
     def fit(self, data_frame: pd.DataFrame) -> None:
+        """Save the offline database internally"""
         self.base = data_frame.copy().reset_index(drop=True)
         self.new_target_id = data_frame.shape[0]
 

@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 from sklearn import preprocessing
 from sklearn.metrics import roc_curve, auc, cohen_kappa_score
 from sklearn.metrics import classification_report
@@ -40,6 +39,8 @@ class PerformanceEvaluator():
         return auc(fpr, tpr)
 
     def _get_encoded(self, y_true, y_pred):
+        """Encode categorical variables for avoiding errors
+        on metric calculation"""
         label_encoder = preprocessing.LabelEncoder()
         label_encoder.fit([*y_true, *y_pred])
         y_true = label_encoder.transform(y_true)

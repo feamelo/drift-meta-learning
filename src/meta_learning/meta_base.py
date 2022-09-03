@@ -10,6 +10,21 @@ DEFAULT_PCA_IMPUTE_VALUE = -9999
 
 
 class Metabase():
+    """Class to manage the metabase.
+
+    Args:
+        target_col (str):
+            Column containing the meta model target column
+        prediction_col (str):
+            Column containing the meta model prediction column
+        pca_n_components (Tuple[int, float], optional):
+            Number of components to keep in metabase dimensionality reduction.
+            If < 1, select the num of components such that the amount of variance that
+            needs to be explained is greater than the percentage specified by n_components.
+            If None, no PCA will by applied. Defaults to None.
+        verbose (bool, optional):
+            Verbosity. Defaults to False.
+    """
     def __init__(
         self,
         target_col: str,
@@ -33,6 +48,7 @@ class Metabase():
         self.pca = None
 
     def _reduce_dim(self, dataframe: pd.DataFrame) -> pd.DataFrame:
+        """Reduce the metabase dimensionality with PCA"""
         if not self.pca_n_components:
             return dataframe
 
@@ -61,6 +77,7 @@ class Metabase():
         self.learning_window_size = df_size
 
     def get_train_metabase(self) -> pd.DataFrame:
+        """Get a subset of the metabase for training a new meta model"""
         # Clear new batch counter
         self.new_batch_size = 0
 
@@ -80,9 +97,11 @@ class Metabase():
         return train_metabase
 
     def get_raw(self) -> pd.DataFrame:
+        """Get the entire metabase dataframe"""
         return self.metabase.copy()
 
     def get_last_performed_batch(self) -> pd.DataFrame:
+        """Returns the last row with target data"""
         metabase = self.get_raw()
         return metabase.iloc[self.new_target_id - 1]
 
@@ -101,4 +120,5 @@ class Metabase():
         self.new_target_id += 1
 
     def update_predictions(self, target: float) -> None:
+        """Update meta base with offline stage batch prediction"""
         self.metabase[self.prediction_col] = target

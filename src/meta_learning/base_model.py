@@ -21,7 +21,7 @@ VERBOSE = False
 R_STATE = 2022
 
 
-class Model():
+class BaseModel():
     def __init__(
         self,
         hyperparameters: Tuple[list, dict] = None,
