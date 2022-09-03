@@ -13,15 +13,24 @@ import optuna
 DEFAULT_N_FOLDS = 5
 VERBOSE = True
 R_STATE = 2022
-DEFAULT_N_TRIALS = 20
+DEFAULT_N_TRIALS = 10
 
 
 def default_param_map(trial):
+    """Param map to be used for optuna optimization.
+    These parameters were chosen based on lightGBM documentation reccomendations
+    for overfitting handling.
+    """
     return {
-        "num_leaves": trial.suggest_int("num_leaves", 15, 30, step=20),  # Default: 31, use small to avoid overfitting
-        "max_depth": trial.suggest_int("max_depth", 3, 12),  # Default: -1, use small to avoid overfitting
-        "max_bin": trial.suggest_int("max_bin", 100, 255),  # Default: 255, use small to avoid overfitting
-        "min_data_in_leaf": trial.suggest_int("min_data_in_leaf", 5, 30, step=5),  # Default: 20
+        # Default: 31, use small to avoid overfitting
+        "num_leaves": trial.suggest_int("num_leaves", 15, 30, step=20),
+        # Default: -1, use small to avoid overfitting
+        "max_depth": trial.suggest_int("max_depth", 3, 12),
+        # Default: 255, use small to avoid overfitting
+        "max_bin": trial.suggest_int("max_bin", 100, 255),
+        # Default: 20. Using small values since the metabase doesn't have many instances
+        "min_data_in_leaf": trial.suggest_int("min_data_in_leaf", 5, 30, step=5),
+        # used to avoid overfitting since the metabase contains many columns
         "feature_fraction": trial.suggest_float("feature_fraction", 0.2, 1, step=0.1),
         "lambda_l1": trial.suggest_int("lambda_l1", 0, 100, step=5),
         "lambda_l2": trial.suggest_int("lambda_l2", 0, 100, step=5),
@@ -50,19 +59,19 @@ class MetaModel():
         cv_scores = np.empty(5)
         hyperparams = self.param_map(trial)
         for idx, (train_idx, test_idx) in enumerate(cross_val.split(features, target)):
-            X_train, X_test = features.iloc[train_idx], features.iloc[test_idx]
+            x_train, x_test = features.iloc[train_idx], features.iloc[test_idx]
             y_train, y_test = target[train_idx], target[test_idx]
 
             model = ltb.LGBMRegressor(verbose=-1, random_state=R_STATE, **hyperparams)
             model.fit(
-                X_train,
+                x_train,
                 y_train,
-                eval_set=[(X_test, y_test)],
+                eval_set=[(x_test, y_test)],
                 eval_metric="mse",
                 early_stopping_rounds=100,
                 callbacks=[LightGBMPruningCallback(trial, "l2")],
             )
-            preds = model.predict(X_test)
+            preds = model.predict(x_test)
             cv_scores[idx] = mean_squared_error(y_test, preds)
         return np.mean(cv_scores)
 
@@ -77,6 +86,9 @@ class MetaModel():
             print(msg)
 
     def fit(self, features: pd.DataFrame, target: pd.Series):
+        """Fit meta model and do hyperparameter tuning with optuna.
+        The hyperparameter tuning is used only on first fit.
+        """
         if not self.best_hyperparams:  # do hyperparam tuning only on 1st training
             self._print("Starting hyperparam tuning")
             best_hyperparams = self._hyperparam_tuning(features, target)
@@ -88,4 +100,5 @@ class MetaModel():
         return self
 
     def predict(self, features: pd.DataFrame) -> pd.Series:
+        """Make a prediction for the provided features"""
         return self.model.predict(features)

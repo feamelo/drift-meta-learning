@@ -1,5 +1,6 @@
 import pandas as pd
 from typing import Tuple
+from threading import Thread
 
 # Custom imports
 from metrics import PsiCalculator, Udetector, DomainClassifier, OmvPht
@@ -26,6 +27,24 @@ INCLUDE_DRIFT_METRICS_MFS = True  # Indicates if drift detection techniques shou
 
 
 class MetaLearner():
+    """Class that implements the meta learning algorithm.
+
+    Args:
+        base_model:
+            An initialized instance of sklearn/lgbm model. It needs to have the methods
+            .fit, .predict and .predict_proba
+            For hyperparam optimization, use the BaseModel wrapper class of meta_learning folder.
+        meta_model: An initialized instance of sklearn model.
+        base_model_class_column (str): _description_
+        target_delay (int): _description_
+        meta_label_metric (str, optional): _description_. Defaults to META_LABEL_METRIC.
+        base_model_type (str, optional): _description_. Defaults to BASE_MODEL_TYPE.
+        eta (int, optional): _description_. Defaults to ETA.
+        step (int, optional): _description_. Defaults to STEP.
+        pca_n_components (Tuple[int, float], optional): _description_. Defaults to PCA_N_COMPONENTS.
+        verbose (bool, optional): _description_. Defaults to VERBOSE.
+        include_drift_metrics_mfs (bool, optional): _description_. Defaults to INCLUDE_DRIFT_METRICS_MFS.
+    """
     def __init__(
         self,
         base_model,
@@ -68,7 +87,20 @@ class MetaLearner():
             verbose = verbose,
         )
 
-    def _get_performance_metrics(self, base_model_type: str, meta_label_metric: str) -> None:
+    def _get_performance_metrics(self, base_model_type: str, meta_label_metric: str) -> list:
+        """Check if the chosen metric can be used for evaluating the base model type.
+
+        Args:
+            base_model_type (str): string containing the base model type name
+                between ["binary_classification", "multiclass", "regression"]
+            meta_label_metric (str): string containing the metric to be used on
+                base model evaluation. It can be:
+                - regression: mse/r2
+                - classification: AUC/kappa/recall/precision/F1/accuracy
+
+        Returns:
+            list: List of metrics that can be used for base model type
+        """
         if base_model_type not in BASE_MODEL_TYPES:
             raise Exception(f"Invalid base_model_type '{base_model_type}', \
                 must be one of: {BASE_MODEL_TYPES}")
@@ -105,12 +137,34 @@ class MetaLearner():
                 SqsiCalculator(score_cols=score_cols).fit(features),
                 Udetector(prediction_col=self.prediction_col).fit(features),
             ]
-            
 
     def _get_meta_features(self, batch_features: pd.DataFrame) -> pd.DataFrame:
-        mf_dict = {}
+        """Calculates the meta features by evaluating all metrics of the
+        self.fitted_metrics array. Usage of threading for faster return.
+
+        Args:
+            batch_features (pd.DataFrame): batch of features to calculate the
+            metrics on.
+
+        Returns:
+            pd.DataFrame: single row dataframe with all evaluated metrics
+            for the provided batch
+        """
+        mf_dict = dict()
+        threads = list()
         for metric in self.fitted_metrics:
-            mf_dict = {**mf_dict, **metric.evaluate(batch_features)}
+            thread = Thread(
+                target=lambda metric, batch_features, mf_dict: mf_dict.update(metric.evaluate(batch_features)),
+                args=(metric, batch_features, mf_dict)
+            )
+            threads.append(thread)
+
+        # start threads
+        for thread in threads:
+            thread.start()
+        # wait for threads to finish
+        for thread in threads:
+            thread.join()
         return pd.DataFrame.from_dict([mf_dict])
 
     def _limit_metric_value(self, value: float, metric_name: str) -> float:
@@ -182,6 +236,13 @@ class MetaLearner():
         pass
 
     def _get_baseline(self) -> dict:
+        """The baseline is the last calculated performance (for the last
+        batch with known target).
+
+        Returns:
+            dict: dictionary containing the last performance for each of the
+            possible metrics, a baseline suffix is added on key names.
+        """
         batch = self.metabase.get_last_performed_batch()[self.performance_metrics]
         return {f"{BASELINE_COL_SUFFIX}{metric}": value for metric, value in batch.iteritems()}
 
