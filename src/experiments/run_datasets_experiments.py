@@ -66,8 +66,5 @@ dataset_metadata = [
 ]
 
 for metadata in dataset_metadata:
-    print(f"Generating metabase for {metadata['dataset_name']} with drift metrics")
-    run_experiment(metadata, True)
-
-    print(f"Generating metabase for {metadata['dataset_name']} without drift metrics")
-    run_experiment(metadata, False)
+    run_experiment(metadata, include_drift=True, detail=metadata['dataset_name'])
+    run_experiment(metadata, include_drift=False, detail=metadata['dataset_name'])

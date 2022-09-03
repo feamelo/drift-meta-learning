@@ -31,8 +31,5 @@ models_metadata = [
 models_metadata = [{**metadata, **base_metadata} for metadata in models_metadata]
 
 for metadata in models_metadata:
-    print(f"Generating metabase for {metadata['base_model'].basis_model.__name__} with drift metrics")
-    run_experiment(metadata, include_drift=True)
-
-    print(f"Generating metabase for {metadata['base_model'].basis_model.__name__} without drift metrics")
-    run_experiment(metadata, include_drift=False)
+    run_experiment(metadata, include_drift=True, detail=metadata['base_model'].basis_model.__name__)
+    run_experiment(metadata, include_drift=False, detail=metadata['base_model'].basis_model.__name__)

@@ -18,7 +18,5 @@ metric_metadata = [{"meta_label_metric": metric, **base_metadata} for metric in 
 
 
 for metadata in metric_metadata:
-    print(f"Generating metabase for {metadata['meta_label_metric']} with drift metrics")
-    run_experiment(metadata, True)
-    print(f"Generating metabase for {metadata['meta_label_metric']} without drift metrics")
-    run_experiment(metadata, False)
+    run_experiment(metadata, include_drift=True, detail=metadata['meta_label_metric'])
+    run_experiment(metadata, include_drift=False, detail=metadata['meta_label_metric'])
