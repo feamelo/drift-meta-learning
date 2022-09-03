@@ -1,7 +1,19 @@
+######################################################################
+# Run experiments for different base models:
+# RandomForestClassifier
+# DecisionTreeClassifier
+# LogisticRegression
+# SVM
+#
+# Other metadata:
+# Dataset: Electricity (binary clf)
+# Meta label: kappa
+######################################################################
+
 import sys
 sys.path.insert(0,'..')
 
-from meta_learning import Model
+from meta_learning import BaseModel
 from utils import run_experiment
 
 # Models
@@ -23,10 +35,10 @@ base_metadata = {
 }
 models_metadata = [
     # RandomForest was already included in datasets experiments - no need to run again
-    # {"base_model": Model(verbose=True, basis_model=RandomForestClassifier, hyperparameters={"max_depth": 6})},
-    {"base_model": Model(verbose=True, basis_model=DecisionTreeClassifier, hyperparameters={"max_depth": 6})},
-    {"base_model": Model(verbose=True, basis_model=LogisticRegression, hyperparameters={})},
-    {"base_model": Model(verbose=True, basis_model=SVC, hyperparameters={"probability": True})},
+    # {"base_model": BaseModel(verbose=True, basis_model=RandomForestClassifier, hyperparameters={"max_depth": 6})},
+    {"base_model": BaseModel(verbose=True, basis_model=DecisionTreeClassifier, hyperparameters={"max_depth": 6})},
+    {"base_model": BaseModel(verbose=True, basis_model=LogisticRegression, hyperparameters={})},
+    {"base_model": BaseModel(verbose=True, basis_model=SVC, hyperparameters={"probability": True})},
 ]
 models_metadata = [{**metadata, **base_metadata} for metadata in models_metadata]
 

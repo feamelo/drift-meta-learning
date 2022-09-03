@@ -1,3 +1,9 @@
+######################################################################
+# Run experiments for different datasets with:
+# Base model: Random Forest
+# Meta label: kappa
+######################################################################
+
 from utils import run_experiment
 
 

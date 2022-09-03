@@ -4,7 +4,7 @@ from sklearn.ensemble import RandomForestClassifier
 # Custom classes
 import sys
 sys.path.insert(0,'..')
-from meta_learning import MetaLearner, Model, MetaModel
+from meta_learning import MetaLearner, BaseModel, MetaModel
 from utils import load_dataset
 
 # Ignoring warnings
@@ -16,7 +16,7 @@ warnings.filterwarnings('ignore')
 R_STATE = 123
 META_LABEL_METRIC = "kappa"
 BASE_MODEL = RandomForestClassifier
-DEFAULT_BASE_MODEL = Model(
+DEFAULT_BASE_MODEL = BaseModel(
     verbose=True,
     basis_model=RandomForestClassifier,
     hyperparameters={"max_depth": 6}
@@ -101,7 +101,7 @@ class MetabaseGenerator():
             self.learner.update_target(target)
 
     def _saving_results(self):
-        file_name = f"basemodel: {BASE_MODEL.__name__} - metric: {META_LABEL_METRIC} - dataset: {self.dataset_name}"
+        file_name = f"basemodel: {self.base_model.basis_model.__name__} - metric: {self.meta_label_metric} - dataset: {self.dataset_name}"
         if self.include_drift_metrics:
             file_name += " - with_drift_metrics"
 

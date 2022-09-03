@@ -1,1 +1,5 @@
 experiment,detail,include_drift,elapsed_time
+meta_labels,DecisionTreeClassifier,True,906.910649061203
+meta_labels,DecisionTreeClassifier,False,990.5974190235138
+meta_labels,LogisticRegression,True,1054.9015810489657
+meta_labels,LogisticRegression,False,820.8538312911987

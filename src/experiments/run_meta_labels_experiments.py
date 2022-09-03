@@ -1,8 +1,21 @@
+######################################################################
+# Run experiments for different base labels:
+# kappa
+# F1
+# recall
+# precision
+# AUC
+#
+# Other metadata:
+# Dataset: Electricity (binary clf)
+# Base model: RandomForestClassifier
+######################################################################
+
 from utils import run_experiment
 from meta_learning import evaluator
 
 
-# Not running for kappa since this is already 
+# Not running for kappa since this is already executed in datasets experiment
 metrics = [metric for metric in evaluator.binary_clf_metrics if metric != "kappa"]
 base_metadata = {
     "dataset_name": "electricity",
