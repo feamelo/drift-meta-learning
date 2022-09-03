@@ -13,12 +13,12 @@ PREDICTION_COL = "predict"
 META_PREDICTION_COL = "predicted"
 BASE_MODEL_TYPE = "binary_classification"
 BASE_MODEL_TYPES = ["binary_classification", "multiclass", "regression"]
-META_LABEL_METRIC = "precision"
+META_LABEL_METRIC = "kappa"
 BASELINE_COL_SUFFIX = "last_"
 R_STATE = 2022
 VERBOSE = False
-ETA = 100  # Window size used to extract meta features
-STEP = 10  # Step for next meta learning iteration
+ETA = 300  # Window size used to extract meta features
+STEP = 30  # Step for next meta learning iteration
 PCA_N_COMPONENTS = None  # Number of components to keep in dim reduction
 # If < 1, select the num of components such that the amount of variance that
 # needs to be explained is greater than the percentage specified by n_components.
@@ -34,16 +34,37 @@ class MetaLearner():
             An initialized instance of sklearn/lgbm model. It needs to have the methods
             .fit, .predict and .predict_proba
             For hyperparam optimization, use the BaseModel wrapper class of meta_learning folder.
-        meta_model: An initialized instance of sklearn model.
-        base_model_class_column (str): _description_
-        target_delay (int): _description_
-        meta_label_metric (str, optional): _description_. Defaults to META_LABEL_METRIC.
-        base_model_type (str, optional): _description_. Defaults to BASE_MODEL_TYPE.
-        eta (int, optional): _description_. Defaults to ETA.
-        step (int, optional): _description_. Defaults to STEP.
-        pca_n_components (Tuple[int, float], optional): _description_. Defaults to PCA_N_COMPONENTS.
-        verbose (bool, optional): _description_. Defaults to VERBOSE.
-        include_drift_metrics_mfs (bool, optional): _description_. Defaults to INCLUDE_DRIFT_METRICS_MFS.
+        meta_model:
+            An initialized instance of sklearn model. It needs to have the methods
+            .fit, .predict and .predict_proba. For lgbm with optuna hyperparam optimization, use
+            the MetaModel wrapper class of meta_learning folder.
+        base_model_class_column (str):
+            Column name containing the target variable
+        target_delay (int):
+            Number of instances for arriving the target
+        meta_label_metric (str, optional):
+            string containing the metric to be used on base model evaluation. It can be:
+            - regression: mse/r2
+            - classification: AUC/kappa/recall/precision/F1/accuracy
+            Defaults to "kappa"
+        base_model_type (str, optional):
+            string containing the base model type name between
+            ["binary_classification", "multiclass", "regression"]
+            Defaults to "binary_classification"
+        eta (int, optional):
+            Window size (number of instances) to calculate the meta features. Defaults to 300.
+        step (int, optional):
+            Step (number of instances) for next meta learning iteration. Defaults to 30.
+        pca_n_components (Tuple[int, float], optional):
+            Number of components to keep in metabase dimensionality reduction.
+            If < 1, select the num of components such that the amount of variance that
+            needs to be explained is greater than the percentage specified by n_components.
+            If None, no PCA will by applied. Defaults to None.
+        verbose (bool, optional):
+            verbosity. Defaults to False.
+        include_drift_metrics_mfs (bool, optional):
+            Boolean indicating wether the drift metrics should be used as meta features
+            Defaults to True.
     """
     def __init__(
         self,
@@ -58,7 +79,7 @@ class MetaLearner():
         pca_n_components: Tuple[int, float] = PCA_N_COMPONENTS,
         verbose: bool = VERBOSE,
         include_drift_metrics_mfs: bool = INCLUDE_DRIFT_METRICS_MFS,
-        ):
+    ):
         self.prediction_col = PREDICTION_COL
         self.fitted_metrics = []
         self.base_model = base_model
@@ -118,6 +139,9 @@ class MetaLearner():
         return metrics
 
     def _fit_metrics(self, train_df: pd.DataFrame) -> None:
+        """Fit drift metrics with reference (no drifted) data
+        used for base model training.
+        """
         features = train_df.rename(columns={
             self.base_model_class_column: self.prediction_col})
         pred_proba = self.base_model.predict_proba(features.drop(self.prediction_col, axis=1))
@@ -168,6 +192,17 @@ class MetaLearner():
         return pd.DataFrame.from_dict([mf_dict])
 
     def _limit_metric_value(self, value: float, metric_name: str) -> float:
+        """Apply a limit to the metric value (considering its theoretical
+        knowledge) when the regression predicted value is above that limit.
+        e.g. precision outside the [0, 1] limits
+
+        Args:
+            value (float): predicted value
+            metric_name (str): metric name
+
+        Returns:
+            float: limited value
+        """
         if value <= evaluator.metrics_range[metric_name][0]:
             return evaluator.metrics_range[metric_name][0]
         if value >= evaluator.metrics_range[metric_name][1]:
@@ -175,6 +210,8 @@ class MetaLearner():
         return value
 
     def _get_meta_labels(self, df_batch: pd.DataFrame) -> dict:
+        """Calculate the meta labels (base model performance)
+        for the given batch"""
         # Not available on online stage
         y_true = df_batch[self.base_model_class_column]
         y_pred = df_batch[self.prediction_col]
@@ -185,6 +222,8 @@ class MetaLearner():
         return metrics
 
     def _fit_offline_baselevel_base(self, dataframe: pd.DataFrame) -> None:
+        """Save offline dataset (for base level, used for base model training)
+        and creates prediction and predict_proba columns for later use"""
         # create prediction and predict_proba columns
         features = dataframe.drop(self.base_model_class_column, axis=1)
         pred_proba = self.base_model.predict_proba(features)

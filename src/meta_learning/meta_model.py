@@ -55,6 +55,8 @@ class MetaModel():
         self.model = None
 
     def _objective(self, trial, features: pd.DataFrame, target: pd.Series):
+        """Time series cross validation for finding the best hyperparam
+        from the provided param map."""
         cross_val = TimeSeriesSplit(n_splits=5)
         cv_scores = np.empty(5)
         hyperparams = self.param_map(trial)
@@ -76,6 +78,7 @@ class MetaModel():
         return np.mean(cv_scores)
 
     def _hyperparam_tuning(self, features: pd.DataFrame, target: pd.Series) -> dict:
+        """Use optuna for automating the hyperparameter tuning step"""
         study = optuna.create_study(direction="minimize", study_name="Meta Model")
         func = lambda trial: self._objective(trial, features, target)
         study.optimize(func, n_trials=self.n_trials)
