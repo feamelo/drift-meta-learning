@@ -1,12 +1,73 @@
-from utils import dataset_metadata
-from metabase_generator import MetabaseGenerator
+from utils import run_experiment
 
-for dataset in dataset_metadata:
-    try:
-        mb_gen_with_drift = MetabaseGenerator(**dataset, include_drift_metrics=True)
-        mb_gen_with_drift.run()
 
-        mb_gen_no_drift = MetabaseGenerator(**dataset, include_drift_metrics=False)
-        mb_gen_no_drift.run()
-    except:
-        print(f"ERROR for {dataset['dataset_name']}")
+# Metadata used for each dataset on meta learning algorithm
+dataset_metadata = [
+    {
+        "dataset_name": "covtype",
+        "class_col": "class",
+        "base_model_type": "multiclass",
+        "offline_phase_size": 50000,
+        "base_train_size": 20000,
+        "eta": 1000,
+        "step": 300,
+        "target_delay": 2000,
+    },
+    {
+        "dataset_name": "airlines",
+        "class_col": "Delay",
+        "base_model_type": "binary_classification",
+        "offline_phase_size": 50000,
+        "base_train_size": 20000,
+        "eta": 1000,
+        "step": 300,
+        "target_delay": 2000,
+    },
+    {
+        "dataset_name": "electricity",
+        "class_col": "class",
+        "base_model_type": "binary_classification",
+        "offline_phase_size": 5000,
+        "base_train_size": 2000,
+        "eta": 100,
+        "step": 30,
+        "target_delay": 500,
+    },
+    {
+        "dataset_name": "powersupply",
+        "class_col": "class",
+        "base_model_type": "multiclass",
+        "offline_phase_size": 5000,
+        "base_train_size": 2000,
+        "eta": 100,
+        "step": 30,
+        "target_delay": 500,
+    },
+    {
+        "dataset_name": "poker-lsn",
+        "class_col": "class",
+        "base_model_type": "multiclass",
+        "offline_phase_size": 50000,
+        "base_train_size": 20000,
+        "eta": 1000,
+        "step": 300,
+        "target_delay": 2000,
+    },
+    {
+        "dataset_name": "rialto",
+        "class_col": "class",
+        "base_model_type": "multiclass",
+        "offline_phase_size": 5000,
+        "base_train_size": 2000,
+        "eta": 100,
+        "step": 30,
+        "target_delay": 500,
+    },
+]
+
+for metadata in dataset_metadata:
+    print(f"Generating metabase for {metadata['dataset_name']} with drift metrics")
+    run_experiment(metadata, True)
+
+    print(f"Generating metabase for {metadata['dataset_name']} without drift metrics")
+    run_experiment(metadata, False)

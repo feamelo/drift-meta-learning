@@ -1,6 +1,4 @@
 import pickle
-
-# Models
 from sklearn.ensemble import RandomForestClassifier
 
 # Custom classes
@@ -18,7 +16,11 @@ warnings.filterwarnings('ignore')
 R_STATE = 123
 META_LABEL_METRIC = "kappa"
 BASE_MODEL = RandomForestClassifier
-BASE_MODEL_HYPERPARAMS = {"max_depth": 6}
+DEFAULT_BASE_MODEL = Model(
+    verbose=True,
+    basis_model=RandomForestClassifier,
+    hyperparameters={"max_depth": 6}
+)
 
 
 class MetabaseGenerator():
@@ -34,6 +36,8 @@ class MetabaseGenerator():
         target_delay: int,
         verbose: bool=True,
         include_drift_metrics: bool=True,
+        base_model=DEFAULT_BASE_MODEL,
+        meta_label_metric=META_LABEL_METRIC,
     ):
         self.verbose = verbose
         self.dataset_name = dataset_name
@@ -45,6 +49,8 @@ class MetabaseGenerator():
         self.step = step
         self.target_delay = target_delay
         self.include_drift_metrics = include_drift_metrics
+        self.base_model = base_model
+        self.meta_label_metric = meta_label_metric
         self.learner = None
         self.dataset = load_dataset(dataset_name)
 
@@ -61,15 +67,14 @@ class MetabaseGenerator():
         return online_features, online_targets
 
     def _run_offline_stage(self):
-        base_model = Model(verbose=True, basis_model=BASE_MODEL, hyperparameters=BASE_MODEL_HYPERPARAMS)
         meta_model = MetaModel()
         learner_params = {
-            "base_model": base_model,
+            "base_model": self.base_model,
             "meta_model": meta_model,
             "base_model_class_column": self.class_col,
             "eta": self.eta,
             "step": self.step,
-            "meta_label_metric": META_LABEL_METRIC,
+            "meta_label_metric": self.meta_label_metric,
             "verbose": True,
             "target_delay": self.target_delay,
             "base_model_type": self.base_model_type,
@@ -114,7 +119,6 @@ class MetabaseGenerator():
             print(msg)
 
     def run(self):
-        self._print(f"Generating metabase for {self.dataset_name} - include_drift_metrics: {self.include_drift_metrics}")
         self._print("Starting offline stage")
         self._run_offline_stage()
         self._print("Starting online stage")
