@@ -16,7 +16,8 @@ from meta_learning import evaluator
 
 
 # Not running for kappa since this is already executed in datasets experiment
-metrics = [metric for metric in evaluator.binary_clf_metrics if metric != "kappa"]
+# metrics = [metric for metric in evaluator.binary_clf_metrics if metric != "kappa"]
+metrics = evaluator.binary_clf_metrics
 base_metadata = {
     "dataset_name": "electricity",
     "class_col": "class",
