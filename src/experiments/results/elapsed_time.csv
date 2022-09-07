@@ -20,4 +20,6 @@ meta_labels,auc,False,1738.0882091522217
 meta_labels,kappa,True,1816.899293899536
 meta_labels,kappa,False,1730.4458339214325
 meta_labels,powersupply,True,2025.963418006897
-meta_labels,powersupply,False,1390.1962509155273
+meta_labels,powersupply,False,1390.1962509155271
+meta_labels,airlines,True,22665.541444063187
+meta_labels,airlines,False,22181.05207657814
