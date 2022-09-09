@@ -6,12 +6,12 @@ import time
 # Macros
 TIME_ELAPSED_FILE = "results/elapsed_time.csv"
 
-def run_experiment(data, include_drift=True, detail="", experiment="meta_labels"):
+def run_experiment(data, dataset, base_model, include_drift=True):
     """Generate metabase for the specified data.
     Measures the elapsed time for running the meta learning algorithm
     and save it to a csv file for later comparison.
     """
-    print(f"Generating metabase for {detail} with{'out' if not include_drift else ''} drift metrics")
+    print(f"Generating metabase for dataset {dataset}, base_model {base_model} with{'out' if not include_drift else ''} drift metrics")
     # Load existing time elapsed dataframe
     time_df = pd.read_csv(TIME_ELAPSED_FILE)
     # Start timer
@@ -20,9 +20,9 @@ def run_experiment(data, include_drift=True, detail="", experiment="meta_labels"
     mb_gen_with_drift = MetabaseGenerator(**data, include_drift_metrics=include_drift)
     mb_gen_with_drift.run()
     # Append time elapsed data to dataframe
-    time_df.loc[len(time_df)] ={
-        "experiment": experiment,
-        "detail": detail,
+    time_df.loc[len(time_df)] = {
+        "dataset": dataset,
+        "base_model": base_model,
         "include_drift": include_drift,
         "elapsed_time": time.time() - start,
     }

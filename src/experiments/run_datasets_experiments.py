@@ -72,5 +72,5 @@ dataset_metadata = [
 ]
 
 for metadata in dataset_metadata:
-    run_experiment(metadata, include_drift=True, detail=metadata['dataset_name'], experiment="datasets")
-    run_experiment(metadata, include_drift=False, detail=metadata['dataset_name'], experiment="datasets")
+    run_experiment(metadata, include_drift=True, dataset=metadata['dataset_name'], base_model="RandomForestClassifier")
+    run_experiment(metadata, include_drift=False, dataset=metadata['dataset_name'], base_model="RandomForestClassifier")
