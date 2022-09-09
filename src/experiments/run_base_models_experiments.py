@@ -43,5 +43,5 @@ models_metadata = [
 models_metadata = [{**metadata, **base_metadata} for metadata in models_metadata]
 
 for metadata in models_metadata:
-    run_experiment(metadata, include_drift=True, detail=metadata['base_model'].basis_model.__name__)
-    run_experiment(metadata, include_drift=False, detail=metadata['base_model'].basis_model.__name__)
+    run_experiment(metadata, include_drift=True, detail=metadata['base_model'].basis_model.__name__, experiment="base_models")
+    run_experiment(metadata, include_drift=False, detail=metadata['base_model'].basis_model.__name__, experiment="base_models")

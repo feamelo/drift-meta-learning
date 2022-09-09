@@ -32,5 +32,5 @@ metric_metadata = [{"meta_label_metric": metric, **base_metadata} for metric in 
 
 
 for metadata in metric_metadata:
-    run_experiment(metadata, include_drift=True, detail=metadata['meta_label_metric'])
-    run_experiment(metadata, include_drift=False, detail=metadata['meta_label_metric'])
+    run_experiment(metadata, include_drift=True, detail=metadata['meta_label_metric'], experiment="meta_labels")
+    run_experiment(metadata, include_drift=False, detail=metadata['meta_label_metric'], experiment="meta_labels")
