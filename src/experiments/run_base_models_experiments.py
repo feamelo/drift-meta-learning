@@ -52,11 +52,10 @@ models_metadata = [
 models_metadata = [{**metadata, **base_metadata} for metadata in models_metadata]
 
 for metadata in models_metadata:
-    try:
-        run_experiment(metadata, include_drift=True, base_model=metadata["base_model"].basis_model.__name__, dataset=metadata["dataset_name"])
-    except:
-        print("asdf")
-    try:
-        run_experiment(metadata, include_drift=False, base_model=metadata["base_model"].basis_model.__name__, dataset=metadata["dataset_name"])
-    except:
-        print("asdf")
+    params = {
+        "data": metadata,
+        "base_model": metadata["base_model"].basis_model.__name__,
+        "dataset": metadata["dataset_name"],
+    }
+    run_experiment(include_drift=True, **params)
+    run_experiment(include_drift=False, **params)

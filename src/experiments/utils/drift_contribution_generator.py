@@ -132,7 +132,7 @@ class DriftContributionGenerator():
 
 if __name__ == "__main__":
     d_gen = DriftContributionGenerator(
-        base_model="RandomForestClassifier",
+        base_model="SVC",
         dataset_name="rialto",
         train_batch_size=200,
         n_models=1,
