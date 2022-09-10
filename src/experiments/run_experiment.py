@@ -3,13 +3,13 @@ from utils import run_experiment
 
 
 dataset_metadata = DATASETS_METADATA["powersupply"]
-experiment_metadata = [{**metadata, **dataset_metadata} for metadata in MODELS_METADATA.values()]
+model_metadata = MODELS_METADATA["SVC"]
+experiment_metadata = {**model_metadata, **dataset_metadata}
 
-for metadata in experiment_metadata:
-    params = {
-        "data": metadata,
-        "base_model": metadata["base_model"].basis_model.__name__,
-        "dataset": metadata["dataset_name"],
-    }
-    run_experiment(include_drift=True, **params)
-    run_experiment(include_drift=False, **params)
+params = {
+    "data": experiment_metadata,
+    "base_model": experiment_metadata["base_model"].basis_model.__name__,
+    "dataset": experiment_metadata["dataset_name"],
+}
+run_experiment(include_drift=True, **params)
+run_experiment(include_drift=False, **params)

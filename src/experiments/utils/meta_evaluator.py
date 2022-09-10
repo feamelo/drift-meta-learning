@@ -26,8 +26,9 @@ BASE_MODELS = [
 
 
 class MetaEvaluator():
-    def __init__(self, window_size: int = 30,):
+    def __init__(self, dataset_name: str, window_size: int = 30):
         self.window_size = window_size
+        self.dataset_name = dataset_name
 
     def _get_mean_mse(self, cols: list, data_frame: pd.DataFrame, metric: str=None):
         result_mse = pd.DataFrame(columns=cols)
@@ -65,16 +66,17 @@ class MetaEvaluator():
         plt.plot(x, y, label=metric, color=color)
         plt.legend(loc=2, fontsize='large')
 
-    def fit(self, dataset: str):
+    def fit(self):
         self.results = {}
         self.metrics = {}
         for base_model in BASE_MODELS:
-            filename = f"results_dataframes/base_model: {base_model} - dataset: {dataset}.csv"
+            filename = f"results_dataframes/base_model: {base_model} - dataset: {self.dataset_name}.csv"
             self.results[base_model], self.metrics[base_model] = self._get_result_df(filename)
         return self
 
     def plot_gain(self):
         plt.figure(figsize=(25, 15))
+        plt.suptitle(f"dataset: {self.dataset_name}", fontsize=25)
         for base_model_idx, base_model in enumerate(BASE_MODELS):
             plt.subplot(2, 2, base_model_idx + 1)
             for metric_idx, metric in enumerate(self.metrics[base_model]):

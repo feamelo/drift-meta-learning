@@ -134,7 +134,7 @@ if __name__ == "__main__":
     d_gen = DriftContributionGenerator(
         base_model="SVC",
         dataset_name="rialto",
-        train_batch_size=200,
+        train_batch_size=97,
         n_models=1,
     )
     d_gen.run()
