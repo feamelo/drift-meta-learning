@@ -47,16 +47,16 @@ DATASETS_METADATA = {
         "step": 30,
         "target_delay": 500,
     },
-    "covtype": {
-        "dataset_name": "covtype", # ERROR
-        "class_col": "class",
-        "base_model_type": "multiclass",
-        "offline_phase_size": 50000,
-        "base_train_size": 20000,
-        "eta": 1000,
-        "step": 300,
-        "target_delay": 2000,
-    },
+    # "covtype": {
+    #     "dataset_name": "covtype", # ERROR
+    #     "class_col": "class",
+    #     "base_model_type": "multiclass",
+    #     "offline_phase_size": 50000,
+    #     "base_train_size": 20000,
+    #     "eta": 1000,
+    #     "step": 300,
+    #     "target_delay": 2000,
+    # },
     "airlines": {
         "dataset_name": "airlines",
         "class_col": "Delay",
@@ -77,16 +77,16 @@ DATASETS_METADATA = {
         "step": 30,
         "target_delay": 500,
     },
-    "poker": {
-        "dataset_name": "poker-lsn", # ERROR
-        "class_col": "class",
-        "base_model_type": "multiclass",
-        "offline_phase_size": 50000,
-        "base_train_size": 20000,
-        "eta": 1000,
-        "step": 300,
-        "target_delay": 2000,
-    },
+    # "poker": {
+    #     "dataset_name": "poker-lsn", # ERROR
+    #     "class_col": "class",
+    #     "base_model_type": "multiclass",
+    #     "offline_phase_size": 50000,
+    #     "base_train_size": 20000,
+    #     "eta": 1000,
+    #     "step": 300,
+    #     "target_delay": 2000,
+    # },
     "rialto": {
         "dataset_name": "rialto",
         "class_col": "class",
