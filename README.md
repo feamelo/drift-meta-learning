@@ -20,14 +20,14 @@ To Do:
 - [x] Target delay experiments
 - [x] Different base model experiments
 - [x] Meta base dimensionality reduction experiments
-- [ ] Other drift metrics implementation
-- [ ] Other databases experiments
-- [ ] Measure elapsed time for each meta feature
+- [x] Other drift metrics implementation
+- [x] Other databases experiments
+- [x] Measure elapsed time
 - [ ] Meta feature selection experiments
 - [x] Baseline
 - [x] Evaluation metrics for meta model vs baseline
 - [ ] Drift alert definition
 - [ ] Drift alert configuration
-- [ ] Code documentation
+- [x] Code documentation
 - [ ] Readme
 - [x] Experiments notebooks adjustments to fit new MetaLearner structure
