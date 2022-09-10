@@ -19,3 +19,7 @@ rialto,SVC,True,4057.918788194656
 rialto,SVC,False,2939.1347172260284
 rialto,DecisionTreeClassifier,True,4218.807152032852
 rialto,DecisionTreeClassifier,False,2909.009505033493
+powersupply,RandomForestClassifier,True,3455.492203950882
+powersupply,RandomForestClassifier,False,785.0963182449341
+powersupply,DecisionTreeClassifier,True,2850.7526483535767
+powersupply,DecisionTreeClassifier,False,490.6763913631439
