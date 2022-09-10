@@ -2,19 +2,16 @@ import pandas as pd
 import numpy as np
 from sklearn import preprocessing
 from sklearn.metrics import roc_curve, auc, cohen_kappa_score
-from sklearn.metrics import classification_report
 from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.metrics import f1_score, precision_score, recall_score
 
 
 # Macros
-BINARY_CLF_METRICS_RANGE = {
+CLF_METRICS_RANGE = {
     "precision": (0, 1),
     "recall": (0, 1),
     "f1-score": (0, 1),
-    "auc": (0, 1),
-    "kappa": (0, 1),
-}
-MULTICLASS_CLF_METRICS_RANGE = {
+    # "auc": (0, 1),
     "kappa": (0, 1),
 }
 REG_METRICS_RANGE = {
@@ -22,14 +19,14 @@ REG_METRICS_RANGE = {
     "mse": (0, np.inf),
     "std": (0, np.inf),
 }
-METRICS = [*BINARY_CLF_METRICS_RANGE.keys(), *REG_METRICS_RANGE.keys()]
-METRICS_RANGE = {**BINARY_CLF_METRICS_RANGE, **REG_METRICS_RANGE}
+METRICS = [*CLF_METRICS_RANGE.keys(), *REG_METRICS_RANGE.keys()]
+METRICS_RANGE = {**CLF_METRICS_RANGE, **REG_METRICS_RANGE}
 
 
 class PerformanceEvaluator():
     def __init__(self):
-        self.binary_clf_metrics = BINARY_CLF_METRICS_RANGE.keys()
-        self.multiclass_clf_metrics = MULTICLASS_CLF_METRICS_RANGE.keys()
+        self.binary_clf_metrics = CLF_METRICS_RANGE.keys()
+        self.multiclass_clf_metrics = CLF_METRICS_RANGE.keys()
         self.reg_metrics = REG_METRICS_RANGE.keys()
         self.metrics_range = METRICS_RANGE
         self.metrics = METRICS
@@ -51,7 +48,7 @@ class PerformanceEvaluator():
         self,
         y_true: pd.Series,
         y_pred: pd.Series,
-        metric_name: str='precision',
+        metric_name: str="precision",
     ) -> float:
         metric_dict = {
             "auc": self._get_auc,
@@ -59,14 +56,11 @@ class PerformanceEvaluator():
             "r2": r2_score,
             "mse": mean_squared_error,
             "std": lambda y_true, y_pred: np.std(y_true - y_pred),
+            "precision": lambda y_true, y_pred: precision_score(y_true, y_pred, average="micro"),
+            "recall": lambda y_true, y_pred: recall_score(y_true, y_pred, average="micro"),
+            "f1-score": lambda y_true, y_pred: f1_score(y_true, y_pred, average="micro"),
         }
-        if metric_name in metric_dict:
-            return metric_dict[metric_name](y_true, y_pred)
-
-        # get metrics from classification report
-        label = list(set([*y_true, *y_pred]))[0]
-        metrics = classification_report(y_true, y_pred, output_dict=True)[str(label)]
-        return metrics[metric_name]
+        return metric_dict[metric_name](y_true, y_pred)
 
     def evaluate(self, y_true: pd.Series, y_pred: pd.Series, metric_name: str='precision') -> float:
         if metric_name not in METRICS:
