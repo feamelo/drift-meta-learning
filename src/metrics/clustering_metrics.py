@@ -66,7 +66,8 @@ class ClusteringMetrics():
             sse.append(kmeans.inertia_)
 
         knee_locl = KneeLocator(range(1, 11), sse, curve="convex", direction="decreasing")
-        return models[knee_locl.elbow - 1]
+        elbow = knee_locl.elbow or 1
+        return models[elbow - 1]
 
     def _get_kmeans_metrics(self, data_frame: pd.DataFrame) -> dict:
         kmeans = self._train_kmeans(data_frame)
