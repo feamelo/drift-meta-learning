@@ -13,3 +13,9 @@ airlines,RandomForestClassifier,True,22665.541444063187
 airlines,RandomForestClassifier,False,22181.05207657814
 rialto,RandomForestClassifier,True,5836.611529350281
 rialto,RandomForestClassifier,False,4620.115948915482
+rialto,RandomForestClassifier,True,7362.263976097107
+rialto,RandomForestClassifier,False,5536.853307008743
+rialto,LogisticRegression,True,3924.9697031974792
+rialto,LogisticRegression,False,2880.745409011841
+rialto,SVC,True,4057.918788194656
+rialto,SVC,False,2939.1347172260284

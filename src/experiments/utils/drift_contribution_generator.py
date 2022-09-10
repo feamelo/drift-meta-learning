@@ -133,7 +133,7 @@ class DriftContributionGenerator():
 if __name__ == "__main__":
     d_gen = DriftContributionGenerator(
         base_model="RandomForestClassifier",
-        dataset_name="airlines",
+        dataset_name="rialto",
         train_batch_size=200,
         n_models=1,
     )
