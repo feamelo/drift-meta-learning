@@ -3,7 +3,7 @@ from utils import run_experiment
 
 
 dataset_metadata = DATASETS_METADATA["powersupply"]
-model_metadata = MODELS_METADATA["SVC"]
+model_metadata = MODELS_METADATA["LogisticRegression"]
 experiment_metadata = {**model_metadata, **dataset_metadata}
 
 params = {
