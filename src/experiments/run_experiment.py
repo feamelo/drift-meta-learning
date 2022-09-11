@@ -2,7 +2,7 @@ from utils import MODELS_METADATA, DATASETS_METADATA
 from utils import run_experiment
 
 
-dataset_metadata = DATASETS_METADATA["powersupply"]
+dataset_metadata = DATASETS_METADATA["airlines"]
 model_metadata = MODELS_METADATA["LogisticRegression"]
 experiment_metadata = {**model_metadata, **dataset_metadata}
 
