@@ -27,3 +27,5 @@ powersupply,SVC,True,2939.849561214447
 powersupply,SVC,False,535.2213821411133
 powersupply,LogisticRegression,True,3453.9025373458862
 powersupply,LogisticRegression,False,537.5530445575714
+airlines,LogisticRegression,True,14542.4949092865
+airlines,LogisticRegression,False,25949.635620117188
