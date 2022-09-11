@@ -11,5 +11,5 @@ params = {
     "base_model": experiment_metadata["base_model"].basis_model.__name__,
     "dataset": experiment_metadata["dataset_name"],
 }
-run_experiment(include_drift=True, **params)
+# run_experiment(include_drift=True, **params)
 run_experiment(include_drift=False, **params)
