@@ -31,3 +31,5 @@ airlines,LogisticRegression,True,14542.4949092865
 airlines,LogisticRegression,False,25949.635620117188
 airlines,DecisionTreeClassifier,True,17405.759557962418
 airlines,DecisionTreeClassifier,False,13243.576419353485
+airlines,SVC,True,14116.354703903198
+airlines,SVC,False,14027.232445955276
