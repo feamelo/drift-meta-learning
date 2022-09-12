@@ -29,3 +29,5 @@ powersupply,LogisticRegression,True,3453.9025373458862
 powersupply,LogisticRegression,False,537.5530445575714
 airlines,LogisticRegression,True,14542.4949092865
 airlines,LogisticRegression,False,25949.635620117188
+airlines,DecisionTreeClassifier,True,17405.759557962418
+airlines,DecisionTreeClassifier,False,13243.576419353485
