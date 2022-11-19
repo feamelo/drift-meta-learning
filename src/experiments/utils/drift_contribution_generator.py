@@ -45,8 +45,8 @@ class DriftContributionGenerator():
         self.meta_models = {}
         for metric in self.metrics:
             self.meta_models[metric] = {
-                "with_drift": [MetaModel() for _ in range(self.n_models)],
-                "without_drift": [MetaModel() for _ in range(self.n_models)],
+                "with_drift": [MetaModel(random_state=i) for i in range(self.n_models)],
+                "without_drift": [MetaModel(random_state=i) for i in range(self.n_models)],
             }
 
     def _imp_dict(self, meta_model):
