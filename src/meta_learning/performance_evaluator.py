@@ -25,9 +25,9 @@ METRICS_RANGE = {**CLF_METRICS_RANGE, **REG_METRICS_RANGE}
 
 class PerformanceEvaluator():
     def __init__(self):
-        self.binary_clf_metrics = CLF_METRICS_RANGE.keys()
-        self.multiclass_clf_metrics = CLF_METRICS_RANGE.keys()
-        self.reg_metrics = REG_METRICS_RANGE.keys()
+        self.binary_clf_metrics = list(CLF_METRICS_RANGE.keys())
+        self.multiclass_clf_metrics = list(CLF_METRICS_RANGE.keys())
+        self.reg_metrics = list(REG_METRICS_RANGE.keys())
         self.metrics_range = METRICS_RANGE
         self.metrics = METRICS
 

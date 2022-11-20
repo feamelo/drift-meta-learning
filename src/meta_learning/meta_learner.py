@@ -1,4 +1,5 @@
 import pandas as pd
+import time
 from typing import Tuple
 from threading import Thread
 
@@ -6,11 +7,13 @@ from threading import Thread
 from metrics import PsiCalculator, Udetector, DomainClassifier, OmvPht
 from metrics import StatsMetrics, ClusteringMetrics, SqsiCalculator
 from meta_learning import evaluator, Metabase, BaseLevelBase
+from meta_learning import BaseModel, MetaModel
+
 
 
 # Macros
-PREDICTION_COL = "predict"
-META_PREDICTION_COL = "predicted"
+BASE_PREDICTION_COL = "predict"
+META_PREDICTION_COL = "predicted_"
 BASE_MODEL_TYPE = "binary_classification"
 BASE_MODEL_TYPES = ["binary_classification", "multiclass", "regression"]
 META_LABEL_METRIC = "kappa"
@@ -68,11 +71,11 @@ class MetaLearner():
     """
     def __init__(
         self,
-        base_model,
-        meta_model,
         base_model_class_column:str,
         target_delay: int,
-        meta_label_metric: str = META_LABEL_METRIC,
+        base_model_params: dict={},
+        meta_model_params: dict={},
+        meta_label_metrics: list = [],
         base_model_type: str = BASE_MODEL_TYPE,
         eta: int = ETA,
         step: int = STEP,
@@ -80,35 +83,37 @@ class MetaLearner():
         verbose: bool = VERBOSE,
         include_drift_metrics_mfs: bool = INCLUDE_DRIFT_METRICS_MFS,
     ):
-        self.prediction_col = PREDICTION_COL
+        self.base_prediction_col = BASE_PREDICTION_COL
         self.fitted_metrics = []
-        self.base_model = base_model
-        self.meta_model = meta_model
+        self.base_model = BaseModel(**base_model_params)
         self.target_delay = target_delay
         self.base_model_class_column = base_model_class_column
-        self.meta_label_metric = meta_label_metric
         self.base_model_type = base_model_type
         self.eta = eta
         self.step = step
         self.pca_n_components = pca_n_components
         self.verbose = verbose
         self.include_drift_metrics_mfs = include_drift_metrics_mfs
+        self.elapsed_time = {}
 
-        self.performance_metrics = self._get_performance_metrics(base_model_type, meta_label_metric)
+        self.performance_metrics = self._get_performance_metrics(base_model_type, meta_label_metrics)
+        if not meta_label_metrics:
+            self.meta_label_metrics = self.performance_metrics
+        self.meta_models = {metric: MetaModel(**meta_model_params) for metric in self.meta_label_metrics}
+
         self.metabase = Metabase(
             pca_n_components = pca_n_components,
-            target_col = meta_label_metric,
-            prediction_col = META_PREDICTION_COL,
+            prediction_col_suffix = META_PREDICTION_COL,
             verbose = verbose,
         )
         self.baselevel_base = BaseLevelBase(
             batch_size = eta,
             target_col = base_model_class_column,
-            prediction_col = self.prediction_col,
+            prediction_col = self.base_prediction_col,
             verbose = verbose,
         )
 
-    def _get_performance_metrics(self, base_model_type: str, meta_label_metric: str) -> list:
+    def _get_performance_metrics(self, base_model_type: str, meta_label_metrics: list) -> list:
         """Check if the chosen metric can be used for evaluating the base model type.
 
         Args:
@@ -133,18 +138,19 @@ class MetaLearner():
         }
         metrics = metric_dict[base_model_type]
 
-        if meta_label_metric not in metrics:
-            raise Exception(f"Invalid meta_label_metric '{meta_label_metric}' \
-                for model type {base_model_type}, must be one of: {metrics}")
+        for meta_label_metric in meta_label_metrics:
+            if meta_label_metric not in metrics:
+                raise Exception(f"Invalid meta_label_metric '{meta_label_metric}' \
+                    for model type {base_model_type}, must be one of: {metrics}")
         return metrics
 
-    def _fit_metrics(self, train_df: pd.DataFrame) -> None:
+    def _fit_drift_metrics(self, train_df: pd.DataFrame) -> None:
         """Fit drift metrics with reference (no drifted) data
         used for base model training.
         """
         features = train_df.rename(columns={
-            self.base_model_class_column: self.prediction_col})
-        pred_proba = self.base_model.predict_proba(features.drop(self.prediction_col, axis=1))
+            self.base_model_class_column: self.base_prediction_col})
+        pred_proba = self.base_model.predict_proba(features.drop(self.base_prediction_col, axis=1))
         score_cols = []
         for idx, pred in enumerate(pred_proba.T):
             features[f"predict_proba_{idx}"] = pred
@@ -159,8 +165,11 @@ class MetaLearner():
                 DomainClassifier().fit(features),
                 OmvPht(score_cols=score_cols).fit(features),
                 SqsiCalculator(score_cols=score_cols).fit(features),
-                Udetector(prediction_col=self.prediction_col).fit(features),
+                Udetector(prediction_col=self.base_prediction_col).fit(features),
             ]
+        
+        for metric in self.fitted_metrics:
+            self.elapsed_time[metric.__class__.__name__] = 0
 
     def _get_meta_features(self, batch_features: pd.DataFrame) -> pd.DataFrame:
         """Calculates the meta features by evaluating all metrics of the
@@ -175,11 +184,16 @@ class MetaLearner():
             for the provided batch
         """
         mf_dict = dict()
+        def calculate_mf(metric, batch_features):
+            start = time.time()
+            mf_dict.update(metric.evaluate(batch_features))
+            self.elapsed_time[metric.__class__.__name__] += time.time() - start
+            
         threads = list()
         for metric in self.fitted_metrics:
             thread = Thread(
-                target=lambda metric, batch_features, mf_dict: mf_dict.update(metric.evaluate(batch_features)),
-                args=(metric, batch_features, mf_dict)
+                target=calculate_mf,
+                args=(metric, batch_features)
             )
             threads.append(thread)
 
@@ -214,11 +228,12 @@ class MetaLearner():
         for the given batch"""
         # Not available on online stage
         y_true = df_batch[self.base_model_class_column]
-        y_pred = df_batch[self.prediction_col]
+        y_pred = df_batch[self.base_prediction_col]
         metrics = {}
         for metric_name in self.performance_metrics:
-            metric_value = evaluator.evaluate(y_true, y_pred, metric_name)
-            metrics[metric_name] = self._limit_metric_value(metric_value, metric_name)
+            metrics[metric_name] = evaluator.evaluate(y_true, y_pred, metric_name)
+            # metric_value = evaluator.evaluate(y_true, y_pred, metric_name) #@@
+            # metrics[metric_name] = self._limit_metric_value(metric_value, metric_name) #@@
         return metrics
 
     def _fit_offline_baselevel_base(self, dataframe: pd.DataFrame) -> None:
@@ -229,7 +244,7 @@ class MetaLearner():
         pred_proba = self.base_model.predict_proba(features)
         for idx, pred in enumerate(pred_proba.T):
             dataframe[f"predict_proba_{idx}"] = pred
-        dataframe[self.prediction_col] = self.base_model.predict(features)
+        dataframe[self.base_prediction_col] = self.base_model.predict(features)
         self.baselevel_base.fit(dataframe)
 
     def _get_last_performances(self, meta_base: pd.DataFrame) -> pd.DataFrame:
@@ -269,19 +284,18 @@ class MetaLearner():
         target = train_df[self.base_model_class_column]
         self.base_model.fit(features, target)
 
-    def _get_train_metabase(self) -> Tuple[pd.DataFrame, pd.Series]:
+    def _get_train_metabase(self, target_col: str) -> Tuple[pd.DataFrame, pd.Series]:
         meta_base = self.metabase.get_train_metabase()
         features = meta_base.drop(self.performance_metrics, axis=1)
-        target = meta_base[self.meta_label_metric]
+        target = meta_base[target_col]
         return features, target
 
     def _train_meta_model(self) -> None:
-        features, target = self._get_train_metabase()
-        self.meta_model.fit(features, target)
-
-    def _check_drift(self) -> None:
-        # TODO
-        pass
+        """Train one meta model for each performance metric
+        listed on self.meta_label_metrics"""
+        for metric in self.meta_label_metrics:
+            features, target = self._get_train_metabase(metric)
+            self.meta_models[metric].fit(features, target)
 
     def _get_baseline(self) -> dict:
         """The baseline is the last calculated performance (for the last
@@ -298,15 +312,18 @@ class MetaLearner():
     def fit(self, base_train_df: pd.DataFrame, meta_train_df: pd.DataFrame) -> None:
         """Creates the first meta base and fits the first meta model"""
         self._train_base_model(base_train_df.copy())
-        self._fit_metrics(base_train_df.copy())
+        self._fit_drift_metrics(base_train_df.copy())
         self._fit_offline_baselevel_base(meta_train_df.copy())
         self._fit_offline_metabase()
         self._train_meta_model()
 
         # Update metabase with meta model prediction
-        features, _ = self._get_train_metabase()
-        y_pred = self.meta_model.predict(features)
-        self.metabase.update_predictions(y_pred)
+        features, _ = self._get_train_metabase(self.meta_label_metrics[0])
+        for metric in self.meta_label_metrics:
+            y_pred = self.meta_models[metric].predict(features)
+            self.metabase.update_predictions(
+                prediction=y_pred,
+                prediction_col=f"{META_PREDICTION_COL}{metric}")
         return self
 
     def update(self, new_instance: pd.DataFrame) -> None:
@@ -318,20 +335,21 @@ class MetaLearner():
         pred_proba = self.base_model.predict_proba(new_instance_df)
         for idx, pred in enumerate(pred_proba.T):
             new_instance[f"predict_proba_{idx}"] = pred[0]
-        new_instance[self.prediction_col] = self.base_model.predict(new_instance_df)[0]
+        new_instance[self.base_prediction_col] = self.base_model.predict(new_instance_df)[0]
         self.baselevel_base.update(new_instance)
 
-        # If there is a new batch for calculating meta fetures
+        # If there is a new batch for calculating meta features
         if self.baselevel_base.new_batch_counter == self.step:
             baseline = self._get_baseline()
             batch = self.baselevel_base.get_batch()
             meta_features = self._get_meta_features(batch)
             meta_features[list(baseline.keys())] = list(baseline.values())
-            meta_features[self.metabase.prediction_col] = self.meta_model.predict(meta_features)
-            self.metabase.update(meta_features)
 
-            # Check if the new batch is a drift indicative
-            self._check_drift()
+            for metric in self.meta_label_metrics:
+                predicted = pd.Series(self.meta_models[metric].predict(meta_features))
+                predicted = predicted.apply(lambda x: self._limit_metric_value(x, metric))
+                meta_features[f"{META_PREDICTION_COL}{metric}"] = predicted
+            self.metabase.update(meta_features)
 
     def update_target(self, target: Tuple[int, float, str]) -> None:
         """Update meta learner with upcoming target"""

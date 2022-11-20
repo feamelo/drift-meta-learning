@@ -3,21 +3,21 @@ import pandas as pd
 from typing import Tuple
 
 import sklearn
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import TimeSeriesSplit
 
 
 # Macros
 DEFAULT_N_FOLDS = 5
-DEFAULT_MODEL = RandomForestClassifier
+DEFAULT_MODEL = SVC
 DEFAULT_SCORING_STRATEGY = "max"
 SCORING_METRICS = sklearn.metrics.SCORERS.keys()
 DEFAULT_METRIC = "precision"
 SCORING_STRATEGIES = ["max", "min"]
 DEFAULT_CROSS_VAL_TYPE = "time_series"
 CROSS_VAL_TYPES = ["time_series", "kfold"]
-VERBOSE = False
+VERBOSE = True
 R_STATE = 2022
 
 

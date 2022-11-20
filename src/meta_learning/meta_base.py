@@ -13,9 +13,7 @@ class Metabase():
     """Class to manage the metabase.
 
     Args:
-        target_col (str):
-            Column containing the meta model target column
-        prediction_col (str):
+        prediction_cols (str):
             Column containing the meta model prediction column
         pca_n_components (Tuple[int, float], optional):
             Number of components to keep in metabase dimensionality reduction.
@@ -27,14 +25,12 @@ class Metabase():
     """
     def __init__(
         self,
-        target_col: str,
-        prediction_col: str,
+        prediction_col_suffix: str,
         pca_n_components: Tuple[int, float] = None,
         verbose: bool = VERBOSE,
     ):
         # Update object properties with init params
-        self.target_col = target_col
-        self.prediction_col = prediction_col
+        self.prediction_col_suffix = prediction_col_suffix
         self.pca_n_components = pca_n_components
         self.verbose = verbose
 
@@ -92,9 +88,10 @@ class Metabase():
 
         if self.verbose:
             print(f"Training model with instances {lower_bound} to {upper_bound}")
-        if self.prediction_col in train_metabase.columns:
-            return train_metabase.drop(self.prediction_col, axis=1)
-        return train_metabase
+
+        # Remove prediction cols
+        prediction_cols = [col for col in train_metabase.columns if self.prediction_col_suffix in col]
+        return train_metabase.drop(prediction_cols, axis=1)
 
     def get_raw(self) -> pd.DataFrame:
         """Get the entire metabase dataframe"""
@@ -112,13 +109,13 @@ class Metabase():
         self.metabase = pd.concat([self.metabase, new_line])
         self.new_row_id += 1
 
-    def update_target(self, target: float) -> None:
+    def update_target(self, target: dict) -> None:
         """Update meta base with upcoming target"""
         self.new_batch_size += 1
         for col, value in target.items():
             self.metabase.at[self.new_target_id, col] = value
         self.new_target_id += 1
 
-    def update_predictions(self, target: float) -> None:
+    def update_predictions(self, prediction: float, prediction_col: str) -> None:
         """Update meta base with offline stage batch prediction"""
-        self.metabase[self.prediction_col] = target
+        self.metabase[prediction_col] = prediction

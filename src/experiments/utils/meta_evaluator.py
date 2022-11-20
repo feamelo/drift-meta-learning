@@ -26,9 +26,10 @@ BASE_MODELS = [
 
 
 class MetaEvaluator():
-    def __init__(self, dataset_name: str, window_size: int = 30):
+    def __init__(self, dataset_name: str, window_size: int = 30, feature_fraction: int=100):
         self.window_size = window_size
         self.dataset_name = dataset_name
+        self.feature_fraction = feature_fraction
 
     def _get_mean_mse(self, cols: list, data_frame: pd.DataFrame, metric: str=None):
         result_mse = pd.DataFrame(columns=cols)
@@ -50,17 +51,17 @@ class MetaEvaluator():
             metric_cols = [col for col in df.columns if metric in col]
             with_drift_cols = [col for col in metric_cols if "with_drift" in col]
             without_drift_cols = [col for col in metric_cols if "without_drift" in col]
-            results[f"{metric}_mse_with_drift"] = self._get_mean_mse(with_drift_cols, df)
-            results[f"{metric}_mse_without_drift"] = self._get_mean_mse(without_drift_cols, df)
+            results[f"{metric}_proposed_mtl_mse"] = self._get_mean_mse(with_drift_cols, df)
+            results[f"{metric}_original_mtl_mse"] = self._get_mean_mse(without_drift_cols, df)
             results[f"{metric}_mse_baseline"] = self._get_mean_mse([f"last_{metric}"], df, metric)
         return results, metrics
 
     def _plot_subplot(self, results_df: pd.DataFrame, color: str=COLORS[0], metric="kappa"):
-        mtl_with_drift_error = results_df[f"{metric}_mse_with_drift"]
-        mtl_without_drift_error = results_df[f"{metric}_mse_without_drift"]
-        mtl_with_drift_gain = mtl_without_drift_error - mtl_with_drift_error
+        proposed_mtl_error = results_df[f"{metric}_proposed_mtl_mse"]
+        baseline_error = results_df[f"{metric}_mse_baseline"]
+        proposed_mtl_gain = baseline_error - proposed_mtl_error
 
-        y = mtl_with_drift_gain.cumsum()
+        y = proposed_mtl_gain.cumsum()
         x = np.arange(len(y))
         plt.fill_between(x, y, alpha=0.1, color=color)
         plt.plot(x, y, label=metric, color=color)
@@ -70,15 +71,39 @@ class MetaEvaluator():
         self.results = {}
         self.metrics = {}
         for base_model in BASE_MODELS:
-            filename = f"results_dataframes/base_model: {base_model} - dataset: {self.dataset_name}.csv"
+            filename = f"results_dataframes/base_model: {base_model} - dataset: {self.dataset_name} - select_k_features: {self.feature_fraction}%.csv"
             self.results[base_model], self.metrics[base_model] = self._get_result_df(filename)
         return self
 
     def plot_gain(self):
-        plt.figure(figsize=(25, 15))
-        plt.suptitle(f"dataset: {self.dataset_name}", fontsize=25)
+        plt.figure(figsize=(25, 5))
+        plt.suptitle(f"dataset: {self.dataset_name}")
         for base_model_idx, base_model in enumerate(BASE_MODELS):
-            plt.subplot(2, 2, base_model_idx + 1)
+            plt.subplot(1, 4, base_model_idx + 1)
             for metric_idx, metric in enumerate(self.metrics[base_model]):
-                plt.title(f"base_model: {base_model}", fontsize=20)
+                plt.title(base_model, fontsize=20)
                 self._plot_subplot(self.results[base_model], metric=metric, color=COLORS[metric_idx])
+
+    def _plot_comp_subplot(self, results_df: pd.DataFrame, color: str=COLORS[0], metric: str="kappa", plot_col: str="proposed_mtl"):
+        if plot_col == "ideal_regressor":
+            results_df[f"{metric}_ideal_regressor_mse"] = 0
+        regressor_error = results_df[f"{metric}_{plot_col}_mse"]
+        baseline_error = results_df[f"{metric}_mse_baseline"]
+        proposed_mtl_gain = baseline_error - regressor_error
+
+        y = proposed_mtl_gain.cumsum()
+        x = np.arange(len(y))
+        plt.fill_between(x, y, alpha=0.1, color=color)
+        plt.plot(x, y, label=plot_col, color=color)
+        plt.legend(loc=2, fontsize='large')
+
+    def plot_original_vs_proposed_mtl_gain(self, metric="kappa", plot_ideal_regressor=True):
+        plt.figure(figsize=(25, 5))
+        plt.suptitle(f"dataset: {self.dataset_name} - metric: {metric}")
+        for base_model_idx, base_model in enumerate(BASE_MODELS):
+            plt.subplot(1, 4, base_model_idx + 1)
+            if plot_ideal_regressor:
+                self._plot_comp_subplot(self.results[base_model], metric=metric, color=COLORS[2], plot_col="ideal_regressor")
+            self._plot_comp_subplot(self.results[base_model], metric=metric, color=COLORS[0], plot_col="proposed_mtl")
+            self._plot_comp_subplot(self.results[base_model], metric=metric, color=COLORS[1], plot_col="original_mtl")
+            plt.title(base_model, fontsize=20)

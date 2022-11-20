@@ -15,25 +15,41 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
+PERF_METRICS = [
+    "precision",
+    "recall",
+    "f1-score",
+    "auc",
+    "kappa",
+]
+
+
 class DriftContributionGenerator():
     def __init__(
         self,
         base_model: str,
         dataset_name: str,
         train_batch_size: str = 200,
-        n_models: int = 3,
+        n_models: int = 1,
+        output_filename: str=None,
+        meta_model_params: dict={},
     ):
         self.train_batch_size = train_batch_size
         self.base_model = base_model
         self.dataset_name = dataset_name
         self.n_models = n_models
+        self.meta_model_params = meta_model_params
+
+        if not output_filename:
+            output_filename = f"base_model: {self.base_model} - dataset: {self.dataset_name}"
+        self.output_filename = output_filename
 
     def _load_metabase(self) -> None:
         filename = f"basemodel: {self.base_model} - metric: kappa - dataset: {self.dataset_name}"
         self.metabase = pd.read_csv(f"metabases/{filename} - with_drift_metrics.csv")
 
     def _create_results_df(self) -> None:
-        self.metrics = list(set(self.metabase.columns).intersection(set(evaluator.binary_clf_metrics)))
+        self.metrics = list(set(self.metabase.columns).intersection(set(PERF_METRICS)))
         final_cols = self.metrics + [f"last_{metric}" for metric in self.metrics]
         self.results = self.metabase[final_cols]
         for metric in self.metrics:
@@ -45,8 +61,8 @@ class DriftContributionGenerator():
         self.meta_models = {}
         for metric in self.metrics:
             self.meta_models[metric] = {
-                "with_drift": [MetaModel() for _ in range(self.n_models)],
-                "without_drift": [MetaModel() for _ in range(self.n_models)],
+                "with_drift": [MetaModel(**self.meta_model_params) for _ in range(self.n_models)],
+                "without_drift": [MetaModel(**self.meta_model_params) for _ in range(self.n_models)],
             }
 
     def _imp_dict(self, meta_model):
@@ -115,11 +131,10 @@ class DriftContributionGenerator():
             self._make_prediction(pred_batch)
 
     def _save_results(self):
-        filename = f"base_model: {self.base_model} - dataset: {self.dataset_name}"
-        self.results.to_csv(f"results/results_dataframes/{filename}.csv", index=False)
+        self.results.to_csv(f"results/results_dataframes/{self.output_filename}.csv", index=False)
 
         importances = self._get_importances()
-        with open(f"results/results_importances/{filename}.json", "w") as fp:
+        with open(f"results/results_importances/{self.output_filename}.json", "w") as fp:
             json.dump(importances, fp)
 
     def run(self):

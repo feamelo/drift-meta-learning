@@ -1,6 +1,5 @@
 import sys
 sys.path.insert(0,'..')
-from meta_learning import BaseModel
 
 # Models
 from sklearn.tree import DecisionTreeClassifier
@@ -11,29 +10,29 @@ from sklearn.ensemble import RandomForestClassifier
 
 MODELS_METADATA = {
     "RandomForestClassifier": {
-        "base_model": BaseModel(
-            verbose=True,
-            basis_model=RandomForestClassifier,
-            hyperparameters={"max_depth": 6}
-        )},
+        "base_model_params": {
+            "verbose": True,
+            "basis_model": RandomForestClassifier,
+            "hyperparameters": {"max_depth": 6}
+        }},
     "DecisionTreeClassifier": {
-        "base_model": BaseModel(
-            verbose=True,
-            basis_model=DecisionTreeClassifier,
-            hyperparameters={"max_depth": 6}
-        )},
+        "base_model_params": {
+            "verbose": True,
+            "basis_model": DecisionTreeClassifier,
+            "hyperparameters": {"max_depth": 6}
+        }},
     "LogisticRegression": {
-        "base_model": BaseModel(
-            verbose=True,
-            basis_model=LogisticRegression,
-            hyperparameters={}
-        )},
+        "base_model_params": {
+            "verbose": True,
+            "basis_model": LogisticRegression,
+            "hyperparameters": {}
+        }},
     "SVC": {
-        "base_model": BaseModel(
-            verbose=True,
-            basis_model=SVC,
-            hyperparameters={"probability": True}
-        )},
+        "base_model_params": {
+            "verbose": True,
+            "basis_model": SVC,
+            "hyperparameters": {"probability": True}
+        }},
 }
 
 DATASETS_METADATA = {
