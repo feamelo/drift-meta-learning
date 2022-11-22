@@ -31,35 +31,29 @@ class MtLRunner():
         self,
         dataset_name: str,
         class_col: str,
-        base_model_type: str,
         offline_phase_size: int,
         base_train_size: int,
-        eta: int,
-        step: int,
         target_delay: int,
         verbose: bool=True,
         include_drift_metrics: bool=True,
         base_model_params=DEFAULT_BASE_MODEL_PARAMS,
-        meta_model_params={},
         meta_label_metric=META_LABEL_METRIC,
         save_file_name: str=None,
+        **other_metalearner_params,
     ):
         self.verbose = verbose
         self.dataset_name = dataset_name
         self.class_col = class_col
-        self.base_model_type = base_model_type
         self.offline_phase_size = offline_phase_size
         self.base_train_size = base_train_size
-        self.eta = eta
-        self.step = step
         self.target_delay = target_delay
         self.include_drift_metrics = include_drift_metrics
         self.base_model_params = base_model_params
-        self.meta_model_params = meta_model_params
         self.meta_label_metric = meta_label_metric
         self.save_file_name = save_file_name
         self.learner = None
         self.dataset = load_dataset(dataset_name)
+        self.other_metalearner_params = other_metalearner_params
         
         if not self.save_file_name:
             self.save_file_name = f"basemodel: {self.base_model_params['basis_model'].__name__} - dataset: {self.dataset_name} - with{'' if self.include_drift_metrics else 'out'}_drift_metrics"
@@ -79,14 +73,11 @@ class MtLRunner():
     def _run_offline_stage(self):
         learner_params = {
             "base_model_params": self.base_model_params,
-            "meta_model_params": self.meta_model_params,
             "base_model_class_column": self.class_col,
-            "eta": self.eta,
-            "step": self.step,
             "verbose": True,
             "target_delay": self.target_delay,
-            "base_model_type": self.base_model_type,
             "include_drift_metrics_mfs": self.include_drift_metrics,
+            **self.other_metalearner_params,
             }
         base_train_df, meta_train_df = self._get_offline_data()
         self.learner = MetaLearner(**learner_params).fit(base_train_df, meta_train_df)

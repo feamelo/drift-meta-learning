@@ -2,8 +2,8 @@ from utils import MODELS_METADATA, DATASETS_METADATA
 from utils import MtLRunner
 
 
-dataset_metadata = DATASETS_METADATA["electricity"]
-model_metadata = MODELS_METADATA["LogisticRegression"]
+dataset_metadata = DATASETS_METADATA["airlines"]
+model_metadata = MODELS_METADATA["RandomForestClassifier"]
 
 # Run experiment
-MtLRunner(**model_metadata, **dataset_metadata).run()
+MtLRunner(**model_metadata, **dataset_metadata, meta_label_metrics=["precision"]).run()

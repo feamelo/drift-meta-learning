@@ -94,6 +94,7 @@ class MetaLearner():
         self.pca_n_components = pca_n_components
         self.verbose = verbose
         self.include_drift_metrics_mfs = include_drift_metrics_mfs
+        self.meta_label_metrics = meta_label_metrics
         self.elapsed_time = {}
 
         self.performance_metrics = self._get_performance_metrics(base_model_type, meta_label_metrics)
