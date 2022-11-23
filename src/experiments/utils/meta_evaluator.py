@@ -97,13 +97,12 @@ class MetaEvaluator():
         plt.plot(x, y, label=plot_col, color=color)
         plt.legend(loc=2, fontsize='large')
 
-    def plot_original_vs_proposed_mtl_gain(self, metric="kappa", plot_ideal_regressor=True):
-        plt.figure(figsize=(25, 5))
-        plt.suptitle(f"dataset: {self.dataset_name} - metric: {metric}")
-        for base_model_idx, base_model in enumerate(BASE_MODELS):
-            plt.subplot(1, 4, base_model_idx + 1)
+    def plot_original_vs_proposed_mtl_gain(self, metric="kappa", plot_ideal_regressor=True, subplot_index=1):
+        for base_model in BASE_MODELS:
+            plt.subplot(4, 4, subplot_index)
             if plot_ideal_regressor:
                 self._plot_comp_subplot(self.results[base_model], metric=metric, color=COLORS[2], plot_col="ideal_regressor")
             self._plot_comp_subplot(self.results[base_model], metric=metric, color=COLORS[0], plot_col="proposed_mtl")
             self._plot_comp_subplot(self.results[base_model], metric=metric, color=COLORS[1], plot_col="original_mtl")
-            plt.title(base_model, fontsize=20)
+            subplot_index += 1
+            plt.title(f"{metric} - {base_model}")
