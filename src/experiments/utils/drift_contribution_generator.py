@@ -6,7 +6,6 @@ sys.path.insert(0,'../..')
 import pandas as pd
 import numpy as np
 import json
-from meta_learning import evaluator
 from meta_learning import MetaModel
 
 
@@ -62,7 +61,7 @@ class DriftContributionGenerator():
         for metric in self.metrics:
             self.meta_models[metric] = {
                 "with_drift": [MetaModel(**self.meta_model_params) for _ in range(self.n_models)],
-                "without_drift": [MetaModel(**self.meta_model_params) for _ in range(self.n_models)],
+                "without_drift": [MetaModel() for _ in range(self.n_models)],
             }
 
     def _imp_dict(self, meta_model):

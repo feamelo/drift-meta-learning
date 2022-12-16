@@ -102,6 +102,7 @@ class MetaModel():
 
         # If feature selection is not needed use all features instead
         if not self.select_k_features or self.select_k_features==1:
+            print("using all features")
             self.feature_list = list(features.columns)
             return features
 

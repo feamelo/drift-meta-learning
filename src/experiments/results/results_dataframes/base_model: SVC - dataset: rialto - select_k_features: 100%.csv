@@ -1,4 +1,4 @@
-precision,recall,kappa,f1-score,last_precision,last_recall,last_kappa,last_f1-score,precision_pred_0_with_drift,precision_pred_0_without_drift,recall_pred_0_with_drift,recall_pred_0_without_drift,kappa_pred_0_with_drift,kappa_pred_0_without_drift,f1-score_pred_0_with_drift,f1-score_pred_0_without_drift
+recall,precision,kappa,f1-score,last_recall,last_precision,last_kappa,last_f1-score,recall_pred_0_with_drift,recall_pred_0_without_drift,precision_pred_0_with_drift,precision_pred_0_without_drift,kappa_pred_0_with_drift,kappa_pred_0_without_drift,f1-score_pred_0_with_drift,f1-score_pred_0_without_drift
 0.43,0.43,0.3666666666666666,0.4299999999999999,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
 0.4,0.4,0.3333333333333331,0.4000000000000001,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
 0.41,0.41,0.3444444444444446,0.41,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
