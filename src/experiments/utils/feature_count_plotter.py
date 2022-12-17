@@ -58,7 +58,7 @@ class FeatureCountPlotter():
         self.summarized_df = results.set_index(self.group_col)
         return self
 
-    def plot(self, title: str="", multiple_lines_col="metric", filter_col="dataset_name", ref_line_dict: dict=None, plot_legend=True):
+    def plot(self, title: str="", multiple_lines_col="metric", filter_col="dataset_name", ref_line_dict: dict=None, plot_legend=True, normalize=False):
         fig = plt.figure(figsize=(25, 5))
         fig.suptitle(title, fontsize=25)
         cols = ["proposed_mtl_mse", multiple_lines_col]
@@ -68,6 +68,10 @@ class FeatureCountPlotter():
             df_plot = df_plot.groupby([self.group_col, multiple_lines_col]).sum().reset_index()
             df_plot = df_plot.pivot(values="proposed_mtl_mse", columns=multiple_lines_col, index=self.group_col)
             ax = fig.add_subplot(int(f"14{idx+1}"))
+
+            if normalize:
+                df_plot = (df_plot-df_plot.min())/(df_plot.max()-df_plot.min())
+
             df_plot.plot(color=COLORS, lw=2, ax=ax, legend=plot_legend)
             if ref_line_dict:
                 ax.axvline(ref_line_dict[filter_val], color='r', linestyle='--')
