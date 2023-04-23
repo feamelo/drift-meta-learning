@@ -39,7 +39,7 @@ class OmvPht():
         """
         for key, value in overlaps.items():
             self.page_hinkleys[key].update(value)
-            if self.page_hinkleys[key].change_detected:
+            if self.page_hinkleys[key].drift_detected:
                 return DRIFT
         return NO_DRIFT
 

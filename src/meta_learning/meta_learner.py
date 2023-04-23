@@ -10,7 +10,6 @@ from meta_learning import evaluator, Metabase, BaseLevelBase
 from meta_learning import BaseModel, MetaModel
 
 
-
 # Macros
 BASE_PREDICTION_COL = "predict"
 META_PREDICTION_COL = "predicted_"
@@ -267,7 +266,7 @@ class MetaLearner():
         meta_base = pd.DataFrame()
         offline_base = self.baselevel_base.get_raw()
         offline_phase_size = offline_base.shape[0]
-        upper_bound = offline_phase_size -  self.eta
+        upper_bound = offline_phase_size - self.eta
 
         for time in range(0, upper_bound, self.step):
             df_batch = offline_base.iloc[time:time + self.eta]
@@ -275,6 +274,7 @@ class MetaLearner():
             meta_features =  self._get_meta_features(batch_features)
             meta_labels = self._get_meta_labels(df_batch)
             meta_features[list(meta_labels.keys())] = list(meta_labels.values())
+            meta_features["original_idx"] = f"{time}:{time + self.eta}"
 
             meta_base = pd.concat([meta_base, meta_features], ignore_index=True)
         meta_base = self._get_last_performances(meta_base)
@@ -308,7 +308,7 @@ class MetaLearner():
             possible metrics, a baseline suffix is added on key names.
         """
         batch = self.metabase.get_last_performed_batch()[self.performance_metrics]
-        return {f"{BASELINE_COL_SUFFIX}{metric}": value for metric, value in batch.iteritems()}
+        return {f"{BASELINE_COL_SUFFIX}{metric}": value for metric, value in batch.items()}
 
     def fit(self, base_train_df: pd.DataFrame, meta_train_df: pd.DataFrame) -> None:
         """Creates the first meta base and fits the first meta model"""
@@ -350,6 +350,9 @@ class MetaLearner():
                 predicted = pd.Series(self.meta_models[metric].predict(meta_features))
                 predicted = predicted.apply(lambda x: self._limit_metric_value(x, metric))
                 meta_features[f"{META_PREDICTION_COL}{metric}"] = predicted
+
+            curr_idx = self.baselevel_base.get_raw().shape[0]
+            meta_features['original_idx'] = f'{curr_idx-self.eta}:{curr_idx}'
             self.metabase.update(meta_features)
 
     def update_target(self, target: Tuple[int, float, str]) -> None:

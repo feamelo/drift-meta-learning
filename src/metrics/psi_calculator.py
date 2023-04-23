@@ -235,7 +235,7 @@ class PsiCalculator():
         scores = np.divide(scores, len(feature))
         return scores, bins
 
-    def _get_categories(self, feature: pd.Series):
+    def _get_categories(self, feature: pd.Series) -> dict:
         """Calculates the percentage occurrence of each category
 
         Args:
@@ -249,7 +249,7 @@ class PsiCalculator():
         data_frame = pd.DataFrame()
         data_frame['categories'] = feature.astype(str)
         data_frame = data_frame.value_counts(normalize=True).to_frame().reset_index()
-        return data_frame.set_index('categories').to_dict()[0]
+        return data_frame.set_index('categories').to_dict()['proportion']
 
     def _is_binary(self, feature: pd.Series) -> bool:
         """Checks whether a given variable is binary or not.
