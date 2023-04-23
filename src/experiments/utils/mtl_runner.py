@@ -54,7 +54,7 @@ class MtLRunner():
         self.learner = None
         self.dataset = load_dataset(dataset_name)
         self.other_metalearner_params = other_metalearner_params
-        
+
         if not self.save_file_name:
             self.save_file_name = f"basemodel: {self.base_model_params['basis_model'].__name__} - dataset: {self.dataset_name} - with{'' if self.include_drift_metrics else 'out'}_drift_metrics"
 

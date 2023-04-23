@@ -22,12 +22,14 @@ def _encode_df_cols(data_frame: pd.DataFrame) -> pd.DataFrame:
         data_frame[col] = lab_enc.fit_transform(data_frame[col])
     return data_frame
 
+
 def _load_generic(name: str) -> pd.DataFrame:
     file = open(f"../datasets/real/{name}.arff", "r", encoding="utf-8")
     data, _ = arff.loadarff(file)
     data_frame = pd.DataFrame(data)
     data_frame = _decode_df_cols(data_frame)
     return _encode_df_cols(data_frame)
+
 
 def _load_electricity() -> pd.DataFrame:
     file = open("../datasets/real/elec.arff", "r", encoding="utf-8")
@@ -37,7 +39,14 @@ def _load_electricity() -> pd.DataFrame:
     data_frame['class'] = data_frame['class'].str.decode("utf-8")
     return data_frame.drop(['date', 'period', 'day'], axis=1)
 
+
 def load_dataset(dataset_name: str) -> pd.DataFrame:
+    # Synthetic datasets
+    if 'csv' in dataset_name:
+        dataset = pd.read_csv(f"../datasets/synthetic/{dataset_name}")
+        return dataset.drop("concept", axis=1)
+
+    # Real datasets
     dataset_dict = {
         "electricity": _load_electricity,
         "covertype": lambda: _load_generic("covtype"),
