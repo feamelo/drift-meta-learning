@@ -2,10 +2,10 @@ import sys
 sys.path.insert(0,'..')
 
 # Models
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 
 MODELS_METADATA = {
@@ -32,6 +32,21 @@ MODELS_METADATA = {
             "verbose": True,
             "basis_model": SVC,
             "hyperparameters": {"probability": True}
+        }},
+}
+
+REG_MODELS_METADATA = {
+    "RandomForestRegressor": {
+        "base_model_params": {
+            "verbose": True,
+            "basis_model": RandomForestRegressor,
+            "hyperparameters": {"max_depth": 6}
+        }},
+    "DecisionTreeRegressor": {
+        "base_model_params": {
+            "verbose": True,
+            "basis_model": DecisionTreeRegressor,
+            "hyperparameters": {"max_depth": 6}
         }},
 }
 
