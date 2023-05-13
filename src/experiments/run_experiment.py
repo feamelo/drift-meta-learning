@@ -32,10 +32,11 @@ def run_synthetic_datasets_experiments(data_type="clf"):
         datasets = ["gradual_friedman.csv"]
         metrics = reg_metrics
 
-    for dataset in datasets:
-        for _, model_metadata in MODELS_METADATA.items():
+    for _, model_metadata in MODELS_METADATA.items():
+        for dataset in datasets:
             dataset_metadata["dataset_name"] = dataset
             print(dataset_metadata)
             MtLRunner(**model_metadata, **dataset_metadata, meta_label_metrics=metrics).run()
 
-# run_synthetic_datasets_experiments()
+
+run_synthetic_datasets_experiments()
