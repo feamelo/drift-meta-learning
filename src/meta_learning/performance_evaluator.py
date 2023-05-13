@@ -12,10 +12,10 @@ CLF_METRICS_RANGE = {
     "recall": (0, 1),
     "f1-score": (0, 1),
     # "auc": (0, 1),
-    "kappa": (0, 1),
+    "kappa": (-1, 1),
 }
 REG_METRICS_RANGE = {
-    "r2": (0, 1),
+    "r2": (-1, 1),
     "mse": (0, np.inf),
     "std": (0, np.inf),
 }

@@ -91,7 +91,7 @@ class Metabase():
 
         # Remove prediction cols
         prediction_cols = [col for col in train_metabase.columns if self.prediction_col_suffix in col]
-        return train_metabase.drop(["original_idx", *prediction_cols], axis=1)
+        return train_metabase.drop(["original_idx", 'data_type', *prediction_cols], axis=1)
 
     def get_raw(self) -> pd.DataFrame:
         """Get the entire metabase dataframe"""

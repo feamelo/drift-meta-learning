@@ -150,11 +150,15 @@ class MetaLearner():
         """
         features = train_df.rename(columns={
             self.base_model_class_column: self.base_prediction_col})
-        pred_proba = self.base_model.predict_proba(features.drop(self.base_prediction_col, axis=1))
-        score_cols = []
-        for idx, pred in enumerate(pred_proba.T):
-            features[f"predict_proba_{idx}"] = pred
-            score_cols.append(f"predict_proba_{idx}")
+
+        # Only create predict_proba for classification problems
+        if "class" in self.base_model_type:
+            pred_proba = self.base_model.predict_proba(features.drop(self.base_prediction_col, axis=1))
+            score_cols = []
+            for idx, pred in enumerate(pred_proba.T):
+                features[f"predict_proba_{idx}"] = pred
+                score_cols.append(f"predict_proba_{idx}")
+
         self.fitted_metrics = [
             StatsMetrics().fit(features),
             ClusteringMetrics().fit(features),
@@ -163,11 +167,16 @@ class MetaLearner():
             self.fitted_metrics += [
                 PsiCalculator().fit(features),
                 DomainClassifier().fit(features),
-                OmvPht(score_cols=score_cols).fit(features),
-                SqsiCalculator(score_cols=score_cols).fit(features),
                 Udetector(prediction_col=self.base_prediction_col).fit(features),
             ]
-        
+
+            # Drift metrics speficic for classification problems
+            if "class" in self.base_model_type:
+                self.fitted_metrics += [
+                    OmvPht(score_cols=score_cols).fit(features),
+                    SqsiCalculator(score_cols=score_cols).fit(features),
+                ]
+
         for metric in self.fitted_metrics:
             self.elapsed_time[metric.__class__.__name__] = 0
 
@@ -184,11 +193,12 @@ class MetaLearner():
             for the provided batch
         """
         mf_dict = dict()
+
         def calculate_mf(metric, batch_features):
             start = time.time()
             mf_dict.update(metric.evaluate(batch_features))
             self.elapsed_time[metric.__class__.__name__] += time.time() - start
-            
+
         threads = list()
         for metric in self.fitted_metrics:
             thread = Thread(
@@ -241,9 +251,13 @@ class MetaLearner():
         and creates prediction and predict_proba columns for later use"""
         # create prediction and predict_proba columns
         features = dataframe.drop(self.base_model_class_column, axis=1)
-        pred_proba = self.base_model.predict_proba(features)
-        for idx, pred in enumerate(pred_proba.T):
-            dataframe[f"predict_proba_{idx}"] = pred
+
+        # Only create predict_proba for classification problems
+        if "class" in self.base_model_type:
+            pred_proba = self.base_model.predict_proba(features)
+            for idx, pred in enumerate(pred_proba.T):
+                dataframe[f"predict_proba_{idx}"] = pred
+
         dataframe[self.base_prediction_col] = self.base_model.predict(features)
         self.baselevel_base.fit(dataframe)
 
@@ -268,16 +282,17 @@ class MetaLearner():
         offline_phase_size = offline_base.shape[0]
         upper_bound = offline_phase_size - self.eta
 
-        for time in range(0, upper_bound, self.step):
-            df_batch = offline_base.iloc[time:time + self.eta]
+        for i in range(0, upper_bound, self.step):
+            df_batch = offline_base.iloc[i:i + self.eta]
             batch_features = df_batch.drop([self.base_model_class_column], axis=1)
-            meta_features =  self._get_meta_features(batch_features)
+            meta_features = self._get_meta_features(batch_features)
             meta_labels = self._get_meta_labels(df_batch)
             meta_features[list(meta_labels.keys())] = list(meta_labels.values())
-            meta_features["original_idx"] = f"{time}:{time + self.eta}"
+            meta_features["original_idx"] = f"{i}:{i + self.eta}"
 
             meta_base = pd.concat([meta_base, meta_features], ignore_index=True)
         meta_base = self._get_last_performances(meta_base)
+        meta_base['data_type'] = 'offline'
         self.metabase.fit(meta_base)
 
     def _train_base_model(self, train_df: pd.DataFrame) -> None:
@@ -332,10 +347,12 @@ class MetaLearner():
         # Update base level base
         new_instance_df = pd.DataFrame(new_instance).T
 
-        # Create multiple cols for predict proba output
-        pred_proba = self.base_model.predict_proba(new_instance_df)
-        for idx, pred in enumerate(pred_proba.T):
-            new_instance[f"predict_proba_{idx}"] = pred[0]
+        # Only create predict_proba for classification problems
+        if "class" in self.base_model_type:
+            pred_proba = self.base_model.predict_proba(new_instance_df)
+            for idx, pred in enumerate(pred_proba.T):
+                new_instance[f"predict_proba_{idx}"] = pred[0]
+
         new_instance[self.base_prediction_col] = self.base_model.predict(new_instance_df)[0]
         self.baselevel_base.update(new_instance)
 
@@ -353,6 +370,7 @@ class MetaLearner():
 
             curr_idx = self.baselevel_base.get_raw().shape[0]
             meta_features['original_idx'] = f'{curr_idx-self.eta}:{curr_idx}'
+            meta_features['data_type'] = 'online'
             self.metabase.update(meta_features)
 
     def update_target(self, target: Tuple[int, float, str]) -> None:

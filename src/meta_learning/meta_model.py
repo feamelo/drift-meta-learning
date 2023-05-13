@@ -127,7 +127,7 @@ class MetaModel():
         """
         # Feature selection
         features = self._select_features(features, target)
-        
+
         # do hyperparam tuning only on 1st training
         if not self.best_hyperparams:
             best_hyperparams = self._hyperparam_tuning(features, target)
