@@ -1,4 +1,4 @@
-from utils import MODELS_METADATA, DATASETS_METADATA, REG_MODELS_METADATA
+from utils import CLF_MODELS_METADATA, DATASETS_METADATA, REG_MODELS_METADATA
 from utils import MtLRunner
 import os
 
@@ -20,23 +20,28 @@ reg_metadata = {"base_model_type": "regression", **dataset_metadata}
 
 def run_real_datasets_experiments():
     for _, dataset_metadata in DATASETS_METADATA.items():
-        for _, model_metadata in MODELS_METADATA.items():
+        for _, model_metadata in CLF_MODELS_METADATA.items():
             MtLRunner(**model_metadata, **dataset_metadata, meta_label_metrics=clf_metrics).run()
 
 
 def run_synthetic_datasets_experiments(data_type="clf"):
     if data_type == "clf":
-        datasets = [file for file in os.listdir("../datasets/synthetic/") if ("csv" in file and "friedman" not in file)]
+        datasets = [file for file in os.listdir("../datasets/synthetic/") if "no_drift" in file]
+        # datasets = [file for file in os.listdir("../datasets/synthetic/") if ("csv" in file and "friedman" not in file)]
         metrics = clf_metrics
+        models_metadata = CLF_MODELS_METADATA
+        dataset_metadata_ = bin_clf_metadata
     else:
         datasets = ["gradual_friedman.csv"]
         metrics = reg_metrics
+        models_metadata = REG_MODELS_METADATA
+        dataset_metadata_ = reg_metadata
 
-    for _, model_metadata in MODELS_METADATA.items():
+    for _, model_metadata in models_metadata.items():
         for dataset in datasets:
-            dataset_metadata["dataset_name"] = dataset
-            print(dataset_metadata)
-            MtLRunner(**model_metadata, **dataset_metadata, meta_label_metrics=metrics).run()
+            dataset_metadata_["dataset_name"] = dataset
+            print(dataset_metadata_)
+            MtLRunner(**model_metadata, **dataset_metadata_, meta_label_metrics=metrics).run()
 
 
-run_synthetic_datasets_experiments()
+run_synthetic_datasets_experiments(data_type="reg")
