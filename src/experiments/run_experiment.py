@@ -26,8 +26,7 @@ def run_real_datasets_experiments():
 
 def run_synthetic_datasets_experiments(data_type="clf"):
     if data_type == "clf":
-        datasets = [file for file in os.listdir("../datasets/synthetic/") if "no_drift" in file]
-        # datasets = [file for file in os.listdir("../datasets/synthetic/") if ("csv" in file and "friedman" not in file)]
+        datasets = [file for file in os.listdir("../datasets/synthetic/") if ("csv" in file and "friedman" not in file)]
         metrics = clf_metrics
         models_metadata = CLF_MODELS_METADATA
         dataset_metadata_ = bin_clf_metadata
@@ -44,4 +43,4 @@ def run_synthetic_datasets_experiments(data_type="clf"):
             MtLRunner(**model_metadata, **dataset_metadata_, meta_label_metrics=metrics).run()
 
 
-run_synthetic_datasets_experiments(data_type="reg")
+run_synthetic_datasets_experiments(data_type="clf")

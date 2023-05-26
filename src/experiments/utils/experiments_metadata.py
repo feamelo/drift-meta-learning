@@ -15,24 +15,24 @@ CLF_MODELS_METADATA = {
             "basis_model": RandomForestClassifier,
             "hyperparameters": {"max_depth": 6}
         }},
-    # "DecisionTreeClassifier": {
-    #     "base_model_params": {
-    #         "verbose": True,
-    #         "basis_model": DecisionTreeClassifier,
-    #         "hyperparameters": {"max_depth": 6}
-    #     }},
-    # "LogisticRegression": {
-    #     "base_model_params": {
-    #         "verbose": True,
-    #         "basis_model": LogisticRegression,
-    #         "hyperparameters": {}
-    #     }},
-    # "SVC": {
-    #     "base_model_params": {
-    #         "verbose": True,
-    #         "basis_model": SVC,
-    #         "hyperparameters": {"probability": True}
-    #     }},
+    "DecisionTreeClassifier": {
+        "base_model_params": {
+            "verbose": True,
+            "basis_model": DecisionTreeClassifier,
+            "hyperparameters": {"max_depth": 6}
+        }},
+    "LogisticRegression": {
+        "base_model_params": {
+            "verbose": True,
+            "basis_model": LogisticRegression,
+            "hyperparameters": {}
+        }},
+    "SVC": {
+        "base_model_params": {
+            "verbose": True,
+            "basis_model": SVC,
+            "hyperparameters": {"probability": True}
+        }},
 }
 
 REG_MODELS_METADATA = {
